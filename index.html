@@ -521,14 +521,38 @@ input[type="password"]:focus {
   background-position: 14px 14px, 0 0;
 }
 
-.memo-grid {
-  list-style: none;
-  margin: 0 auto; padding: 0;
+.memo-grid { list-style: none; margin: 0 auto; padding: 0; }
+
+/* 목록 모드(모바일) */
+.memo-grid.is-list {
   max-width: 1120px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
   gap: 26px 22px;
   align-items: start;
+}
+
+/* 자유 배치 캔버스(넓은 화면) */
+.memo-grid.is-canvas { position: relative; }
+.memo-grid.is-canvas .memo { position: absolute; width: 240px; margin: 0; }
+.memo-grid.is-canvas .memo.is-mine { touch-action: none; }
+.memo-grid.is-canvas .memo.is-mine .memo-hit { cursor: grab; }
+.memo.is-dragging {
+  z-index: 20;
+  transition: none;
+  transform: rotate(var(--tilt, 0deg)) scale(1.04);
+  box-shadow: 0 12px 24px rgba(17, 24, 39, 0.28);
+}
+.memo.is-dragging .memo-hit { cursor: grabbing; }
+
+/* 클릭한 자리에 표시되는 점선 자리표시 */
+.drop-hint {
+  position: absolute;
+  width: 240px; height: 168px;
+  border: 2px dashed var(--blue);
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.06);
+  pointer-events: none;
 }
 
 .board-empty {
@@ -614,17 +638,50 @@ input[type="password"]:focus {
 .memo-body { margin: 0; display: flex; flex-direction: column; gap: 7px; }
 .memo-row { display: flex; flex-direction: column; gap: 1px; }
 .memo-row dt { font-size: 10px; font-weight: 800; color: rgba(17, 24, 39, 0.45); }
-.memo-row dd {
-  margin: 0;
+.memo-row dd { margin: 0; }
+/* 목록이 들어가도 깨지지 않도록 높이로 잘라 낸다 */
+.memo-clamp {
   font-size: 12.5px; line-height: 1.55;
   color: #1f2937;
   word-break: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  max-height: 4.7em;
   overflow: hidden;
 }
-.memo-row dd.is-block { color: var(--red-dark); font-weight: 600; }
+.memo-clamp.is-block { color: var(--red-dark); font-weight: 600; }
+
+/* "- " 목록 렌더링 */
+.rich-line { margin: 0; }
+.rich-list { margin: 0; padding-left: 1.1em; }
+.rich-list li { margin: 0; }
+.rich > br { line-height: 0.5; }
+
+/* 자유 메모 */
+.memo-free-title {
+  margin: 0;
+  font-size: 13px; font-weight: 700;
+  color: #1f2937;
+  word-break: break-word;
+}
+.memo-thumb {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.6);
+  line-height: 0;
+}
+.memo-thumb img { width: 100%; height: 110px; object-fit: cover; display: block; }
+.thumb-more {
+  position: absolute;
+  right: 6px; bottom: 6px;
+  font-size: 11px; font-weight: 700;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.62);
+  border-radius: 999px;
+  padding: 1px 7px;
+  line-height: 1.6;
+}
+.memo-tag.is-free { background: rgba(37, 99, 235, 0.12); border-color: var(--blue-line); color: var(--blue-dark); }
+.memo-comments { font-weight: 700; }
 
 .memo-events { display: flex; flex-wrap: wrap; gap: 4px; }
 .memo-events .chip {
@@ -633,7 +690,127 @@ input[type="password"]:focus {
   border-color: rgba(17, 24, 39, 0.12);
   color: #374151;
 }
-.memo-time { margin: auto 0 0; padding-top: 6px; font-size: 10.5px; color: rgba(17, 24, 39, 0.45); }
+.memo-time {
+  margin: auto 0 0;
+  padding-top: 6px;
+  font-size: 10.5px;
+  color: rgba(17, 24, 39, 0.45);
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+}
+
+/* =========================================================
+   형식 선택 토글 / 사진 / 댓글
+   ========================================================= */
+.seg {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.seg-btn {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  font: inherit;
+  font-size: 13px; font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.seg-btn.is-on { color: #fff; }
+.seg-thumb {
+  position: absolute;
+  z-index: 0;
+  top: 4px; left: 4px; bottom: 4px;
+  width: calc(50% - 6px);
+  background: var(--blue);
+  border-radius: 999px;
+  transition: transform 0.18s cubic-bezier(0.2, 0.75, 0.3, 1);
+}
+.seg.is-free .seg-thumb { transform: translateX(calc(100% + 4px)); }
+
+.img-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.img-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+.img-thumb {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--surface-2);
+  line-height: 0;
+}
+.img-thumb img { width: 100%; height: 92px; object-fit: cover; display: block; }
+.img-thumb.is-pending::after {
+  content: '업로드 예정';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  font-size: 10px; font-weight: 700; line-height: 1.8;
+  text-align: center;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.6);
+}
+.img-del {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  appearance: none;
+  font: inherit; font-size: 11px;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.62);
+  border: 0; border-radius: 50%;
+  cursor: pointer;
+}
+.img-del:hover { background: rgba(17, 24, 39, 0.82); }
+#freeFields.is-dropping { outline: 2px dashed var(--blue); outline-offset: 6px; border-radius: 10px; }
+
+.view-images { display: flex; flex-direction: column; gap: 10px; }
+.view-image { margin: 0; }
+.view-image img {
+  width: 100%; height: auto; display: block;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.comments { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.comment-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.comment-item {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.comment-head { display: flex; align-items: center; gap: 8px; }
+.comment-name { font-size: 12.5px; font-weight: 700; color: var(--text); }
+.comment-time { font-size: 11px; color: var(--muted); flex: 1 1 auto; }
+.comment-del {
+  appearance: none; font: inherit;
+  flex: none;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px; cursor: pointer;
+}
+.comment-del:hover { background: #eceef1; color: var(--text-2); }
+.comment-text { margin: 4px 0 0; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+.comment-empty { font-size: 13px; color: var(--muted); }
+.comment-add { display: flex; gap: 8px; }
+.comment-add input { flex: 1 1 auto; min-width: 0; }
+.comment-add .btn { flex: none; }
 
 /* =========================================================
    메모 보기 / 작성 모달
@@ -825,7 +1002,7 @@ input[type="password"]:focus {
   .board-head { padding: 12px 14px; }
   .board-date { font-size: 17px; }
   .board-surface { padding: 22px 14px 48px; }
-  .memo-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 16px; }
+  .memo-grid.is-list { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 16px; }
 
   .search-head { padding: 12px 14px; }
   .search-body { padding: 14px; }
@@ -1016,32 +1193,77 @@ input[type="password"]:focus {
     </header>
 
     <div class="sheet-body">
+      <!-- 읽기 -->
       <div class="pane" id="viewPane" hidden>
         <dl class="view-body" id="viewBody"></dl>
+        <div class="view-images" id="viewImages"></div>
+
+        <section class="comments" aria-labelledby="commentTitle">
+          <h3 class="section-title" id="commentTitle">댓글 <span id="commentCount"></span></h3>
+          <ul class="comment-list" id="commentList"></ul>
+          <div class="comment-add">
+            <label class="sr-only" for="fComment">댓글 내용</label>
+            <input type="text" id="fComment" maxlength="500" placeholder="댓글을 남겨보세요" />
+            <button type="button" class="btn primary" id="btnAddComment">등록</button>
+          </div>
+        </section>
       </div>
 
+      <!-- 작성 / 수정 -->
       <div class="pane" id="editPane">
-        <div class="field">
-          <label for="fYesterday">어제 한 작업</label>
-          <textarea id="fYesterday" rows="3" placeholder="예) UI/UX 전략 문서 작성 및 팀 공유"></textarea>
+        <!-- 형식 선택 -->
+        <div class="seg" id="typeSeg" role="radiogroup" aria-label="메모 형식">
+          <button type="button" class="seg-btn is-on" id="segScrum" role="radio" aria-checked="true" data-type="scrum">스크럼 메모</button>
+          <button type="button" class="seg-btn" id="segFree" role="radio" aria-checked="false" data-type="free">자유 메모</button>
+          <span class="seg-thumb" id="segThumb" aria-hidden="true"></span>
         </div>
-        <div class="field">
-          <label for="fToday">오늘 할 작업</label>
-          <textarea id="fToday" rows="3" placeholder="예) 메인 메뉴 와이어프레임 제작"></textarea>
-        </div>
-        <div class="field field-blockers">
-          <label for="fBlockers">막힌 점</label>
-          <textarea id="fBlockers" rows="3" placeholder="예) 사용할 무료 아이콘 에셋이 아직 정해지지 않음 (없으면 비워두거나 '없음')"></textarea>
-        </div>
-        <fieldset class="field">
-          <legend>이벤트</legend>
-          <div class="event-add">
-            <label class="sr-only" for="fEvent">이벤트 제목</label>
-            <input type="text" id="fEvent" maxlength="60" placeholder="예) 오전 스크럼, UI 시안 회의" />
-            <button type="button" class="btn primary" id="btnAddEvent">추가</button>
+
+        <!-- 스크럼 형식 -->
+        <div class="pane" id="scrumFields">
+          <div class="field">
+            <label for="fYesterday">어제 한 작업</label>
+            <textarea id="fYesterday" rows="3" placeholder="예) UI/UX 전략 문서 작성 및 팀 공유&#10;- 로 목록을 만들 수 있어요"></textarea>
           </div>
-          <ul class="event-list" id="eventList"></ul>
-        </fieldset>
+          <div class="field">
+            <label for="fToday">오늘 할 작업</label>
+            <textarea id="fToday" rows="3" placeholder="예) 메인 메뉴 와이어프레임 제작"></textarea>
+          </div>
+          <div class="field field-blockers">
+            <label for="fBlockers">막힌 점</label>
+            <textarea id="fBlockers" rows="3" placeholder="예) 사용할 무료 아이콘 에셋이 아직 정해지지 않음 (없으면 비워두거나 '없음')"></textarea>
+          </div>
+          <fieldset class="field">
+            <legend>이벤트</legend>
+            <div class="event-add">
+              <label class="sr-only" for="fEvent">이벤트 제목</label>
+              <input type="text" id="fEvent" maxlength="60" placeholder="예) 오전 스크럼, UI 시안 회의" />
+              <button type="button" class="btn primary" id="btnAddEvent">추가</button>
+            </div>
+            <ul class="event-list" id="eventList"></ul>
+          </fieldset>
+        </div>
+
+        <!-- 자유 형식 -->
+        <div class="pane" id="freeFields" hidden>
+          <div class="field">
+            <label for="fTitle">제목</label>
+            <input type="text" id="fTitle" maxlength="60" placeholder="비워둬도 됩니다" />
+          </div>
+          <div class="field">
+            <label for="fBody">내용</label>
+            <textarea id="fBody" rows="6" placeholder="자유롭게 적어보세요.&#10;- 로 시작하면 목록이 됩니다"></textarea>
+          </div>
+          <fieldset class="field">
+            <legend>사진</legend>
+            <div class="img-add">
+              <button type="button" class="btn" id="btnPickImage">사진 추가</button>
+              <input type="file" id="fileImage" class="sr-only" accept="image/*" multiple
+                     tabindex="-1" aria-label="올릴 사진 선택" />
+              <span class="hint" id="imageHint">끌어다 놓거나 붙여넣기(Ctrl+V)도 됩니다. 최대 6장.</span>
+            </div>
+            <div class="img-grid" id="imageGrid"></div>
+          </fieldset>
+        </div>
       </div>
     </div>
 
@@ -1126,6 +1348,17 @@ input[type="password"]:focus {
   const LOCAL_DB_KEY = 'scrum-calendar:localdb';
   const MAX_CELL_EVENTS = 2;
   const MAX_MEMO_EVENTS = 3;
+  const MAX_COMMENT_LEN = 500;
+  const MAX_IMAGES = 6;
+  const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;   // 원본 파일 상한
+  const IMAGE_MAX_SIDE = 1600;                // 업로드 전 리사이즈 기준
+  const IMAGE_QUALITY = 0.8;
+  const HOLE = 28;                            // 타공판 구멍 간격 = 스냅 단위
+  const CANVAS_W = 1204;                      // 자유 배치 캔버스 폭(1280 화면에서 가로 스크롤이 안 생기게)
+  const MEMO_W = 240;                         // 캔버스 모드 메모 폭
+  const MEMO_H = 200;                         // 자동 배치용 기준 높이
+  const CANVAS_MIN_W = 721;                   // 이 폭 이상에서만 자유 배치 + 드래그
+  const DRAG_THRESHOLD = 5;
   const MAX_SEARCH_RESULTS = 60;
   const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
   const WEEKDAY_HEADERS = ['월', '화', '수', '목', '금', '토', '일'];
@@ -1169,11 +1402,18 @@ input[type="password"]:focus {
     focusKey: '',
     boardKey: null,
     modalMode: null,        // 'view' | 'edit'
-    modalOwner: '',         // 보고 있는 메모의 주인 아이디
+    modalMemoId: '',        // 보고 있거나 수정 중인 메모 ID('' = 새 메모)
     modalReturn: null,
+    draftType: 'scrum',     // 작성 폼에서 고른 형식
     draftEvents: [],
+    draftImages: [],        // { id, url, path, w, h, file? } file 이 있으면 아직 업로드 전
+    removedImages: [],      // 저장 시 Storage 에서 지울 경로
+    pendingPos: null,       // 타공판을 클릭해 지정한 위치 { x, y }
     baseline: '',
-    pinnedOwner: '',
+    pinnedMemoId: '',
+    drag: null,             // 드래그 중인 상태
+    suppressClick: false,
+    boardDirty: false,      // 드래그 중 들어온 갱신을 나중에 반영
     zoomTimer: null,
     toastTimer: null,
     backdropDown: false,
@@ -1277,19 +1517,67 @@ input[type="password"]:focus {
   /* =======================================================
      메모 정규화
      ======================================================= */
-  const emptyMemo = () =>
-    ({ nickname: '', yesterday: '', today: '', blockers: '', events: [], updatedAt: '', imported: false });
+  const emptyMemo = () => ({
+    type: 'scrum',              // 'scrum' | 'free'
+    authorId: '',
+    nickname: '',
+    x: null,                    // 타공판 위 좌표(없으면 자동 배치)
+    y: null,
+    yesterday: '', today: '', blockers: '', events: [],
+    title: '', body: '', images: [],
+    comments: [],
+    createdAt: '', updatedAt: '',
+    imported: false
+  });
 
-  function normalizeMemo(raw, fallbackNickname) {
+  const asNumber = (value) =>
+    (typeof value === 'number' && isFinite(value)) ? value : null;
+
+  function normalizeComment(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const text = typeof raw.text === 'string' ? raw.text.trim().slice(0, MAX_COMMENT_LEN) : '';
+    if (!text) return null;
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id : createId(),
+      authorId: typeof raw.authorId === 'string' ? raw.authorId : '',
+      nickname: cleanName(raw.nickname),
+      text: text,
+      createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : ''
+    };
+  }
+
+  function normalizeImage(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const url = typeof raw.url === 'string' ? raw.url : '';
+    if (!url) return null;
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id : createId(),
+      url: url,
+      path: typeof raw.path === 'string' ? raw.path : '',
+      w: asNumber(raw.w) || 0,
+      h: asNumber(raw.h) || 0
+    };
+  }
+
+  // fallbackAuthorId: 예전 형식(키가 작성자 아이디)일 때 쓰는 값
+  function normalizeMemo(raw, fallbackAuthorId) {
     const memo = emptyMemo();
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return memo;
 
-    memo.nickname = cleanName(raw.nickname) || cleanName(fallbackNickname);
+    memo.type = raw.type === 'free' ? 'free' : 'scrum';
+    memo.authorId = cleanName(raw.authorId) || cleanName(fallbackAuthorId);
+    memo.nickname = cleanName(raw.nickname) || memo.authorId;
+    memo.x = asNumber(raw.x);
+    memo.y = asNumber(raw.y);
+    memo.createdAt = typeof raw.createdAt === 'string' ? raw.createdAt : '';
+    memo.updatedAt = typeof raw.updatedAt === 'string' ? raw.updatedAt : '';
+    memo.imported = raw.imported === true;
+
     memo.yesterday = asText(raw.yesterday);
     memo.today = asText(raw.today);
     memo.blockers = asText(raw.blockers);
-    memo.updatedAt = typeof raw.updatedAt === 'string' ? raw.updatedAt : '';
-    memo.imported = raw.imported === true;
+    memo.title = typeof raw.title === 'string' ? raw.title.trim().slice(0, MAX_TITLE_LEN) : '';
+    memo.body = asText(raw.body);
 
     if (Array.isArray(raw.events)) {
       raw.events.forEach((ev) => {
@@ -1306,19 +1594,39 @@ input[type="password"]:focus {
         memo.events.push({ id: id || createId(), title: title });
       });
     }
+
+    if (Array.isArray(raw.images)) {
+      raw.images.forEach((img) => {
+        const image = normalizeImage(img);
+        if (image && memo.images.length < MAX_IMAGES) memo.images.push(image);
+      });
+    }
+
+    if (Array.isArray(raw.comments)) {
+      raw.comments.forEach((c) => {
+        const comment = normalizeComment(c);
+        if (comment) memo.comments.push(comment);
+      });
+    }
+    // arrayRemove 로 정확히 지우기 위해 원본 댓글 배열을 함께 들고 있는다
+    memo.__rawComments = Array.isArray(raw.comments) ? raw.comments : [];
     return memo;
   }
 
-  const isEmptyMemo = (memo) =>
-    !memo.yesterday.trim() && !memo.today.trim() && !memo.blockers.trim() && memo.events.length === 0;
+  function isEmptyMemo(memo) {
+    if (memo.type === 'free') return !memo.title.trim() && !memo.body.trim() && !memo.images.length;
+    return !memo.yesterday.trim() && !memo.today.trim() &&
+      !memo.blockers.trim() && memo.events.length === 0;
+  }
 
+  // 키는 메모 ID. 예전 형식(키 = 작성자 아이디, authorId 없음)은 그대로 읽어 변환한다.
   function normalizeDay(raw) {
     const memos = {};
     if (!raw || typeof raw !== 'object') return { memos: memos };
     const source = raw.memos && typeof raw.memos === 'object' ? raw.memos : {};
-    Object.keys(source).forEach((uid) => {
-      const memo = normalizeMemo(source[uid], uid);
-      if (!isEmptyMemo(memo)) memos[uid] = memo;
+    Object.keys(source).forEach((memoId) => {
+      const memo = normalizeMemo(source[memoId], memoId);
+      if (!isEmptyMemo(memo)) memos[memoId] = memo;
     });
     return { memos: memos };
   }
@@ -1452,23 +1760,61 @@ input[type="password"]:focus {
         cb(collectRange(calId, start, end));
         return () => listeners.delete(listener);
       },
-      async setMemo(calId, dateKey, uid, memo) {
+      async setMemo(calId, dateKey, memoId, memo) {
         const db = readDb();
         if (!db.days[calId]) db.days[calId] = {};
         if (!db.days[calId][dateKey]) db.days[calId][dateKey] = { memos: {} };
-        db.days[calId][dateKey].memos[uid] = memo;
+        db.days[calId][dateKey].memos[memoId] = memo;
         writeDb(db);
         notify();
       },
-      async deleteMemo(calId, dateKey, uid) {
+      async deleteMemo(calId, dateKey, memoId) {
         const db = readDb();
         const day = db.days[calId] && db.days[calId][dateKey];
         if (!day) return;
-        delete day.memos[uid];
+        delete day.memos[memoId];
         if (!Object.keys(day.memos).length) delete db.days[calId][dateKey];
         writeDb(db);
         notify();
       },
+      // 메모의 일부 필드만 갱신(위치 이동 등)
+      async patchMemo(calId, dateKey, memoId, patch) {
+        const db = readDb();
+        const day = db.days[calId] && db.days[calId][dateKey];
+        if (!day || !day.memos[memoId]) return;
+        Object.assign(day.memos[memoId], patch);
+        writeDb(db);
+        notify();
+      },
+      async addComment(calId, dateKey, memoId, comment) {
+        const db = readDb();
+        const memo = db.days[calId] && db.days[calId][dateKey] && db.days[calId][dateKey].memos[memoId];
+        if (!memo) throw new Error('메모를 찾을 수 없습니다.');
+        if (!Array.isArray(memo.comments)) memo.comments = [];
+        memo.comments.push(comment);
+        writeDb(db);
+        notify();
+      },
+      async removeComment(calId, dateKey, memoId, comment) {
+        const db = readDb();
+        const memo = db.days[calId] && db.days[calId][dateKey] && db.days[calId][dateKey].memos[memoId];
+        if (!memo || !Array.isArray(memo.comments)) return;
+        memo.comments = memo.comments.filter((c) => !c || c.id !== comment.id);
+        writeDb(db);
+        notify();
+      },
+      // 로컬 모드에서는 이미지를 data URL 로 보관한다(용량 때문에 작게 줄여 저장)
+      storageAvailable: true,
+      async uploadImage(calId, dateKey, memoId, imageId, blob) {
+        const url = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(new Error('이미지를 읽지 못했습니다.'));
+          reader.readAsDataURL(blob);
+        });
+        return { url: url, path: '' };
+      },
+      async deleteImage() { /* 로컬 모드에는 지울 파일이 없다 */ },
       async fetchAllDays(calId) {
         const db = readDb();
         const all = db.days[calId] || {};
@@ -1502,6 +1848,19 @@ input[type="password"]:focus {
 
     const app = appMod.initializeApp(config);
     const db = fsMod.getFirestore(app);
+
+    // 사진 업로드용 Storage (설정에 버킷이 없으면 사진 기능만 꺼진다)
+    let storageMod = null;
+    let storage = null;
+    if (config.storageBucket) {
+      try {
+        storageMod = await import(base + 'firebase-storage.js');
+        storage = storageMod.getStorage(app);
+      } catch (err) {
+        console.warn('Storage 를 사용할 수 없습니다. 사진 기능이 꺼집니다.', err);
+        storageMod = null;
+      }
+    }
 
     // 보안 규칙에서 request.auth 를 쓰기 위해 익명 로그인을 시도한다.
     try {
@@ -1563,15 +1922,51 @@ input[type="password"]:focus {
           showToast('기록을 불러오지 못했습니다. 네트워크와 권한을 확인해 주세요.', 'error');
         });
       },
-      async setMemo(calId, dateKey, uid, memo) {
+      async setMemo(calId, dateKey, memoId, memo) {
         const payload = { memos: {} };
-        payload.memos[uid] = memo;
+        payload.memos[memoId] = memo;
         await setDoc(dayRef(calId, dateKey), payload, { merge: true });
       },
-      async deleteMemo(calId, dateKey, uid) {
+      async deleteMemo(calId, dateKey, memoId) {
         const patch = {};
-        patch['memos.' + uid] = deleteField();
+        patch['memos.' + memoId] = deleteField();
         await updateDoc(dayRef(calId, dateKey), patch);
+      },
+      // 위치 이동처럼 일부 필드만 바꿀 때
+      async patchMemo(calId, dateKey, memoId, patch) {
+        const update = {};
+        Object.keys(patch).forEach((field) => {
+          update['memos.' + memoId + '.' + field] = patch[field];
+        });
+        await updateDoc(dayRef(calId, dateKey), update);
+      },
+      // 동시에 여러 명이 달아도 유실되지 않도록 arrayUnion / arrayRemove 를 쓴다
+      async addComment(calId, dateKey, memoId, comment) {
+        const patch = {};
+        patch['memos.' + memoId + '.comments'] = fsMod.arrayUnion(comment);
+        await updateDoc(dayRef(calId, dateKey), patch);
+      },
+      async removeComment(calId, dateKey, memoId, comment) {
+        const patch = {};
+        patch['memos.' + memoId + '.comments'] = fsMod.arrayRemove(comment);
+        await updateDoc(dayRef(calId, dateKey), patch);
+      },
+      storageAvailable: !!storage,
+      async uploadImage(calId, dateKey, memoId, imageId, blob) {
+        if (!storage) throw new Error('사진 저장소(Storage)가 준비되지 않았습니다.');
+        const path = 'calendars/' + calId + '/' + dateKey + '/' + memoId + '/' + imageId + '.jpg';
+        const fileRef = storageMod.ref(storage, path);
+        await storageMod.uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
+        const url = await storageMod.getDownloadURL(fileRef);
+        return { url: url, path: path };
+      },
+      async deleteImage(path) {
+        if (!storage || !path) return;
+        try {
+          await storageMod.deleteObject(storageMod.ref(storage, path));
+        } catch (err) {
+          console.warn('사진을 지우지 못했습니다.', err);
+        }
       },
       async fetchAllDays(calId) {
         const snapshot = await getDocs(collection(db, 'calendars', calId, 'days'));
@@ -1622,11 +2017,13 @@ input[type="password"]:focus {
   function guardStore(store, ms) {
     const guarded = {
       name: store.name,
+      storageAvailable: !!store.storageAvailable,
       subscribeRange: store.subscribeRange.bind(store),
       subscribeCalendar: store.subscribeCalendar.bind(store)
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
-     'setMemo', 'deleteMemo', 'fetchAllDays', 'writeDays'].forEach((key) => {
+     'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
+     'uploadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
       guarded[key] = function () {
         const args = Array.prototype.slice.call(arguments);
         return withTimeout(Promise.resolve().then(() => store[key].apply(store, args)), ms);
@@ -1921,7 +2318,8 @@ input[type="password"]:focus {
       state.unsubscribe = state.store.subscribeRange(state.calendar.id, start, end, (days) => {
         state.days = days || {};
         renderCalendar();
-        // 편집 중에는 입력 내용을 지키기 위해 게시판만 갱신한다
+        // 드래그 중에는 다시 그리지 않고, 끝난 뒤에 반영한다
+        if (state.drag) { state.boardDirty = true; return; }
         if (state.boardKey) renderBoard();
         if (state.modalMode === 'view' && state.boardKey) refreshViewIfNeeded();
       });
@@ -1956,35 +2354,54 @@ input[type="password"]:focus {
      메모 조회
      ======================================================= */
   const dayMemos = (key) => (state.days[key] && state.days[key].memos) || {};
-  const getMemo = (key, uid) => {
+  const getMemo = (key, memoId) => {
     const memos = dayMemos(key);
-    return memos[uid] ? normalizeMemo(memos[uid], uid) : emptyMemo();
+    return memos[memoId] ? normalizeMemo(memos[memoId], memoId) : emptyMemo();
   };
-  const hasMemo = (key, uid) => Object.prototype.hasOwnProperty.call(dayMemos(key), uid);
+  const hasMemo = (key, memoId) => Object.prototype.hasOwnProperty.call(dayMemos(key), memoId);
   const myId = () => (state.session ? state.session.userId : '');
+  const isMine = (memo) => !!memo && memo.authorId === myId();
 
-  // 그날 메모를 붙인 사람(내 메모가 항상 맨 앞)
-  function memoOwners(key) {
+  // 그날 붙은 메모 ID 목록. 내 메모 먼저, 그다음 닉네임 · 작성 순
+  function memoIds(key) {
     const memos = dayMemos(key);
     return Object.keys(memos).sort((a, b) => {
-      if (a === myId()) return -1;
-      if (b === myId()) return 1;
-      return String(memos[a].nickname || a).localeCompare(String(memos[b].nickname || b), 'ko');
+      const ma = memos[a];
+      const mb = memos[b];
+      const mineA = ma.authorId === myId();
+      const mineB = mb.authorId === myId();
+      if (mineA !== mineB) return mineA ? -1 : 1;
+      const byName = String(ma.nickname || '').localeCompare(String(mb.nickname || ''), 'ko');
+      if (byName !== 0) return byName;
+      return String(ma.createdAt || '').localeCompare(String(mb.createdAt || ''));
     });
   }
 
   function daySummary(key) {
     const memos = dayMemos(key);
-    const owners = memoOwners(key);
-    const info = { owners: owners, count: owners.length, mine: false, nicknames: [], blockedNames: [], events: [] };
-    owners.forEach((uid) => {
-      const memo = normalizeMemo(memos[uid], uid);
-      const nickname = memo.nickname || uid;
-      info.nicknames.push(nickname);
-      if (uid === myId()) info.mine = true;
-      if (hasBlocker(memo.blockers)) info.blockedNames.push(nickname);
-      memo.events.forEach((ev) => info.events.push({ id: ev.id, title: ev.title, owner: uid, nickname: nickname }));
+    const ids = memoIds(key);
+    const authors = [];
+    const info = {
+      ids: ids, memoCount: ids.length, count: 0, mine: false,
+      nicknames: [], blockedNames: [], events: [], commentCount: 0
+    };
+    ids.forEach((memoId) => {
+      const memo = normalizeMemo(memos[memoId], memoId);
+      const nickname = memo.nickname || memo.authorId;
+      if (authors.indexOf(memo.authorId) < 0) {
+        authors.push(memo.authorId);
+        info.nicknames.push(nickname);
+      }
+      if (isMine(memo)) info.mine = true;
+      if (hasBlocker(memo.blockers) && info.blockedNames.indexOf(nickname) < 0) {
+        info.blockedNames.push(nickname);
+      }
+      info.commentCount += memo.comments.length;
+      memo.events.forEach((ev) => {
+        info.events.push({ id: ev.id, title: ev.title, owner: memo.authorId, nickname: nickname });
+      });
     });
+    info.count = authors.length;      // 중복 없는 작성자 수
     return info;
   }
 
@@ -2074,8 +2491,10 @@ input[type="password"]:focus {
     if (isToday) labelParts.push('오늘');
     if (!inMonth) labelParts.push('다른 달');
     if (info.count) {
-      labelParts.push('메모 ' + info.count + '장: ' + info.nicknames.join(', '));
+      labelParts.push('작성 ' + info.count + '명: ' + info.nicknames.join(', '));
+      labelParts.push('메모 ' + info.memoCount + '장');
       labelParts.push(info.mine ? '내 메모 있음' : '내 메모 없음');
+      if (info.commentCount) labelParts.push('댓글 ' + info.commentCount + '개');
       if (info.blockedNames.length) {
         labelParts.push('막힌 점 ' + info.blockedNames.length + '명: ' + info.blockedNames.join(', '));
       }
@@ -2326,20 +2745,77 @@ input[type="password"]:focus {
     });
   }
 
-  function buildMemoCard(key, uid) {
-    const memo = getMemo(key, uid);
-    const nickname = memo.nickname || uid;
-    const style = memoStyleFor(nickname);
-    const blocked = hasBlocker(memo.blockers);
-    const isMine = uid === myId();
+  // ---------- "- " 목록을 불릿으로 그려 주는 렌더러 ----------
+  // 원본은 평문 그대로 저장하고, 보여줄 때만 목록으로 만든다. innerHTML 은 쓰지 않는다.
+  function renderRichText(target, text) {
+    target.replaceChildren();
+    const lines = String(text || '').split('\n');
+    let list = null;
+
+    lines.forEach((line) => {
+      const match = /^\s*-\s+(.*)$/.exec(line);
+      if (match) {
+        if (!list) {
+          list = document.createElement('ul');
+          list.className = 'rich-list';
+          target.appendChild(list);
+        }
+        const li = document.createElement('li');
+        li.textContent = match[1];
+        list.appendChild(li);
+        return;
+      }
+      list = null;
+      if (!line.trim()) {
+        target.appendChild(document.createElement('br'));
+        return;
+      }
+      const p = document.createElement('p');
+      p.className = 'rich-line';
+      p.textContent = line;
+      target.appendChild(p);
+    });
+  }
+
+  // 화면이 넓을 때만 자유 배치 + 드래그를 쓴다
+  const isCanvasMode = () => window.innerWidth >= CANVAS_MIN_W;
+  const snap = (value) => Math.round(value / HOLE) * HOLE;
+
+  // 좌표가 없는 메모를 겹치지 않는 빈 자리에 배치한다
+  function autoPlace(occupied) {
+    const colStep = HOLE * 10;   // 280
+    const rowStep = HOLE * 8;    // 224
+    const cols = Math.max(1, Math.floor((CANVAS_W - HOLE) / colStep));
+    for (let row = 0; row < 40; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const x = HOLE + col * colStep;
+        const y = HOLE + row * rowStep;
+        const hit = occupied.some((r) =>
+          x < r.x + MEMO_W + 12 && x + MEMO_W + 12 > r.x &&
+          y < r.y + MEMO_H + 12 && y + MEMO_H + 12 > r.y);
+        if (!hit) return { x: x, y: y };
+      }
+    }
+    return { x: HOLE, y: HOLE };
+  }
+
+  function buildMemoCard(key, memoId) {
+    const memo = getMemo(key, memoId);
+    const nickname = memo.nickname || memo.authorId;
+    const style = memoStyleFor(nickname);          // 색은 닉네임 기준
+    const tilt = memoStyleFor(memoId).tilt;        // 기울기는 메모마다 다르게
+    const blocked = memo.type === 'scrum' && hasBlocker(memo.blockers);
+    const mine = isMine(memo);
 
     const item = document.createElement('li');
-    item.className = 'memo' + (blocked ? ' is-blocked' : '') + (isMine ? ' is-mine' : '');
-    item.dataset.owner = uid;
+    item.className = 'memo' + (blocked ? ' is-blocked' : '') + (mine ? ' is-mine' : '') +
+      (memo.type === 'free' ? ' is-free' : '');
+    item.dataset.memoId = memoId;
+    item.dataset.author = memo.authorId;
     item.style.setProperty('--memo-bg', style.bg);
     item.style.setProperty('--memo-line', style.line);
     item.style.setProperty('--memo-ink', style.ink);
-    item.style.setProperty('--tilt', style.tilt + 'deg');
+    item.style.setProperty('--tilt', tilt + 'deg');
 
     const pin = document.createElement('span');
     pin.className = 'pin';
@@ -2356,8 +2832,12 @@ input[type="password"]:focus {
     const hit = document.createElement('button');
     hit.type = 'button';
     hit.className = 'memo-hit';
-    hit.dataset.owner = uid;
-    hit.setAttribute('aria-label', nickname + '님의 메모 열기' + (blocked ? ', 막힌 점 있음' : ''));
+    hit.dataset.memoId = memoId;
+    hit.setAttribute('aria-label',
+      nickname + '님의 ' + (memo.type === 'free' ? '자유 메모' : '스크럼 메모') + ' 열기' +
+      (blocked ? ', 막힌 점 있음' : '') +
+      (memo.comments.length ? ', 댓글 ' + memo.comments.length + '개' : '') +
+      (mine ? ', Shift와 화살표 키로 위치 이동 가능' : ''));
     item.appendChild(hit);
 
     const head = document.createElement('div');
@@ -2368,10 +2848,16 @@ input[type="password"]:focus {
     who.textContent = nickname;         // XSS 방지
     head.appendChild(who);
 
-    if (isMine) {
+    if (mine) {
       const tag = document.createElement('span');
       tag.className = 'memo-tag';
       tag.textContent = '내 메모';
+      head.appendChild(tag);
+    }
+    if (memo.type === 'free') {
+      const tag = document.createElement('span');
+      tag.className = 'memo-tag is-free';
+      tag.textContent = '자유';
       head.appendChild(tag);
     }
     if (memo.imported) {
@@ -2388,48 +2874,89 @@ input[type="password"]:focus {
     }
     item.appendChild(head);
 
-    const body = document.createElement('dl');
-    body.className = 'memo-body';
-    const addRow = (label, value, isBlock) => {
-      const row = document.createElement('div');
-      row.className = 'memo-row';
-      const dt = document.createElement('dt');
-      dt.textContent = label;
-      const dd = document.createElement('dd');
-      if (isBlock) dd.className = 'is-block';
-      dd.textContent = value;           // XSS 방지
-      row.appendChild(dt);
-      row.appendChild(dd);
-      body.appendChild(row);
-    };
-    if (memo.yesterday.trim()) addRow('어제', memo.yesterday.trim(), false);
-    if (memo.today.trim()) addRow('오늘', memo.today.trim(), false);
-    if (memo.blockers.trim()) addRow('막힌 점', memo.blockers.trim(), blocked);
-    item.appendChild(body);
-
-    if (memo.events.length) {
-      const events = document.createElement('div');
-      events.className = 'memo-events';
-      memo.events.slice(0, MAX_MEMO_EVENTS).forEach((ev) => {
-        const chip = document.createElement('span');
-        chip.className = 'chip';
-        chip.textContent = ev.title;
-        events.appendChild(chip);
-      });
-      const rest = memo.events.length - MAX_MEMO_EVENTS;
-      if (rest > 0) {
-        const more = document.createElement('span');
-        more.className = 'chip more';
-        more.textContent = '+' + rest + '개';
-        events.appendChild(more);
+    if (memo.type === 'free') {
+      // ---------- 자유 메모: 사진 + 제목 + 내용 ----------
+      if (memo.images.length) {
+        const shot = document.createElement('div');
+        shot.className = 'memo-thumb';
+        const img = document.createElement('img');
+        img.src = memo.images[0].url;
+        img.alt = nickname + '님이 올린 사진';
+        img.loading = 'lazy';
+        shot.appendChild(img);
+        if (memo.images.length > 1) {
+          const more = document.createElement('span');
+          more.className = 'thumb-more';
+          more.textContent = '+' + (memo.images.length - 1);
+          shot.appendChild(more);
+        }
+        item.appendChild(shot);
       }
-      item.appendChild(events);
+      if (memo.title.trim()) {
+        const title = document.createElement('p');
+        title.className = 'memo-free-title';
+        title.textContent = memo.title.trim();
+        item.appendChild(title);
+      }
+      if (memo.body.trim()) {
+        const body = document.createElement('div');
+        body.className = 'memo-clamp rich';
+        renderRichText(body, memo.body.trim());
+        item.appendChild(body);
+      }
+    } else {
+      // ---------- 스크럼 메모 ----------
+      const body = document.createElement('dl');
+      body.className = 'memo-body';
+      const addRow = (label, value, isBlock) => {
+        const row = document.createElement('div');
+        row.className = 'memo-row';
+        const dt = document.createElement('dt');
+        dt.textContent = label;
+        const dd = document.createElement('dd');
+        dd.className = 'memo-clamp rich' + (isBlock ? ' is-block' : '');
+        renderRichText(dd, value);      // XSS 방지: textContent 기반 렌더러
+        row.appendChild(dt);
+        row.appendChild(dd);
+        body.appendChild(row);
+      };
+      if (memo.yesterday.trim()) addRow('어제', memo.yesterday.trim(), false);
+      if (memo.today.trim()) addRow('오늘', memo.today.trim(), false);
+      if (memo.blockers.trim()) addRow('막힌 점', memo.blockers.trim(), blocked);
+      item.appendChild(body);
+
+      if (memo.events.length) {
+        const events = document.createElement('div');
+        events.className = 'memo-events';
+        memo.events.slice(0, MAX_MEMO_EVENTS).forEach((ev) => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = ev.title;
+          events.appendChild(chip);
+        });
+        const rest = memo.events.length - MAX_MEMO_EVENTS;
+        if (rest > 0) {
+          const more = document.createElement('span');
+          more.className = 'chip more';
+          more.textContent = '+' + rest + '개';
+          events.appendChild(more);
+        }
+        item.appendChild(events);
+      }
     }
 
-    const time = document.createElement('p');
-    time.className = 'memo-time';
+    const foot = document.createElement('p');
+    foot.className = 'memo-time';
+    const time = document.createElement('span');
     time.textContent = memo.updatedAt ? formatUpdatedAt(memo.updatedAt) : '';
-    item.appendChild(time);
+    foot.appendChild(time);
+    if (memo.comments.length) {
+      const badge = document.createElement('span');
+      badge.className = 'memo-comments';
+      badge.textContent = '💬 ' + memo.comments.length;
+      foot.appendChild(badge);
+    }
+    item.appendChild(foot);
 
     return item;
   }
@@ -2438,22 +2965,219 @@ input[type="password"]:focus {
     const key = state.boardKey;
     if (!key) return;
 
+    // 다시 그리면 포커스가 사라지므로 어느 메모에 있었는지 기억해 둔다
+    const focused = document.activeElement;
+    const focusedMemoId = focused && focused.classList && focused.classList.contains('memo-hit')
+      ? focused.dataset.memoId : '';
+
     el.boardDate.textContent = formatKoreanDate(fromKey(key));
-    const owners = memoOwners(key);
-    el.boardCount.textContent = owners.length ? '붙은 메모 ' + owners.length + '장' : '아직 메모가 없습니다';
+    const ids = memoIds(key);
+    const info = daySummary(key);
+    el.boardCount.textContent = ids.length
+      ? '붙은 메모 ' + ids.length + '장 · 작성 ' + info.count + '명'
+      : '아직 메모가 없습니다';
 
+    const canvas = isCanvasMode();
+    el.memoGrid.classList.toggle('is-canvas', canvas);
+    el.memoGrid.classList.toggle('is-list', !canvas);
     el.memoGrid.replaceChildren();
-    owners.forEach((uid) => el.memoGrid.appendChild(buildMemoCard(key, uid)));
-    el.boardEmpty.hidden = owners.length > 0;
 
-    if (state.pinnedOwner) {
-      const target = el.memoGrid.querySelector('.memo[data-owner="' + cssEscape(state.pinnedOwner) + '"]');
+    const occupied = [];
+    if (canvas) {
+      // 좌표가 있는 메모를 먼저 자리에 놓고, 없는 메모는 빈 자리를 찾아 배치한다
+      ids.forEach((memoId) => {
+        const memo = getMemo(key, memoId);
+        if (memo.x !== null && memo.y !== null) occupied.push({ x: memo.x, y: memo.y });
+      });
+    }
+
+    let maxBottom = 0;
+    ids.forEach((memoId) => {
+      const memo = getMemo(key, memoId);
+      const card = buildMemoCard(key, memoId);
+      if (canvas) {
+        let pos;
+        if (memo.x !== null && memo.y !== null) {
+          // 판 밖으로 나가지 않도록 그릴 때도 한 번 더 가둔다
+          pos = { x: clamp(memo.x, 0, CANVAS_W - MEMO_W), y: Math.max(0, memo.y) };
+        } else {
+          pos = autoPlace(occupied);
+          occupied.push(pos);
+          card.dataset.auto = '1';        // 아직 저장되지 않은 자동 위치
+        }
+        card.style.left = pos.x + 'px';
+        card.style.top = pos.y + 'px';
+        card.dataset.x = String(pos.x);
+        card.dataset.y = String(pos.y);
+        maxBottom = Math.max(maxBottom, pos.y + MEMO_H);
+      }
+      el.memoGrid.appendChild(card);
+    });
+
+    if (canvas) {
+      el.memoGrid.style.width = CANVAS_W + 'px';
+      el.memoGrid.style.height = Math.max(560, maxBottom + HOLE * 4) + 'px';
+    } else {
+      el.memoGrid.style.width = '';
+      el.memoGrid.style.height = '';
+    }
+
+    el.boardEmpty.hidden = ids.length > 0;
+    if (state.pendingPos && canvas) showDropHint(state.pendingPos);
+
+    // 위치 이동 등으로 다시 그린 뒤에도 같은 메모에 포커스를 돌려준다
+    if (focusedMemoId) {
+      const again = el.memoGrid.querySelector('.memo-hit[data-memo-id="' + cssEscape(focusedMemoId) + '"]');
+      if (again) again.focus();
+    }
+
+    if (state.pinnedMemoId) {
+      const target = el.memoGrid.querySelector('.memo[data-memo-id="' + cssEscape(state.pinnedMemoId) + '"]');
       if (target) {
         target.classList.add('is-pinned');
         window.setTimeout(() => target.classList.remove('is-pinned'), 300);
       }
-      state.pinnedOwner = '';
+      state.pinnedMemoId = '';
     }
+  }
+
+  // 타공판을 클릭했을 때 보여 주는 점선 자리표시
+  function showDropHint(pos) {
+    hideDropHint();
+    const hint = document.createElement('div');
+    hint.className = 'drop-hint';
+    hint.id = 'dropHint';
+    hint.style.left = pos.x + 'px';
+    hint.style.top = pos.y + 'px';
+    hint.setAttribute('aria-hidden', 'true');
+    el.memoGrid.appendChild(hint);
+  }
+
+  function hideDropHint() {
+    const hint = document.getElementById('dropHint');
+    if (hint) hint.remove();
+  }
+
+  /* =======================================================
+     메모 드래그로 옮기기 (자기 메모만, 넓은 화면에서만)
+     ======================================================= */
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+  async function saveMemoPosition(memoId, x, y) {
+    try {
+      await state.store.patchMemo(state.calendar.id, state.boardKey, memoId, { x: x, y: y });
+    } catch (err) {
+      console.warn('위치 저장 실패', err);
+      showToast(friendlyError(err), 'error');
+      renderBoard();                       // 실패하면 원래 자리로 되돌린다
+    }
+  }
+
+  function handleBoardPointerDown(event) {
+    if (!isCanvasMode() || event.button !== 0 || state.drag) return;
+    const card = event.target.closest ? event.target.closest('.memo') : null;
+    if (!card) return;
+    const memo = getMemo(state.boardKey, card.dataset.memoId);
+    if (!isMine(memo)) return;             // 남의 메모는 잡아도 움직이지 않는다
+
+    state.drag = {
+      memoId: card.dataset.memoId,
+      card: card,
+      originX: Number(card.dataset.x || 0),
+      originY: Number(card.dataset.y || 0),
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+      pointerId: event.pointerId
+    };
+    try { card.setPointerCapture(event.pointerId); } catch (err) { /* 무시 */ }
+  }
+
+  function handleBoardPointerMove(event) {
+    const drag = state.drag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) return;  // 클릭과 구분
+    if (!drag.moved) {
+      drag.moved = true;
+      drag.card.classList.add('is-dragging');
+    }
+    drag.currentX = clamp(drag.originX + dx, 0, CANVAS_W - MEMO_W);
+    drag.currentY = Math.max(0, drag.originY + dy);
+    drag.card.style.left = drag.currentX + 'px';
+    drag.card.style.top = drag.currentY + 'px';
+    event.preventDefault();
+  }
+
+  async function handleBoardPointerUp(event) {
+    const drag = state.drag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    state.drag = null;
+    try { drag.card.releasePointerCapture(event.pointerId); } catch (err) { /* 무시 */ }
+
+    if (!drag.moved) {
+      if (state.boardDirty) { state.boardDirty = false; renderBoard(); }
+      return;
+    }
+
+    drag.card.classList.remove('is-dragging');
+    state.suppressClick = true;            // 드래그 직후의 클릭(메모 열기)을 막는다
+    window.setTimeout(() => { state.suppressClick = false; }, 0);
+
+    // 가장 가까운 구멍에 스냅
+    const x = snap(clamp(drag.currentX === undefined ? drag.originX : drag.currentX, 0, CANVAS_W - MEMO_W));
+    const y = snap(Math.max(0, drag.currentY === undefined ? drag.originY : drag.currentY));
+    drag.card.style.left = x + 'px';
+    drag.card.style.top = y + 'px';
+    drag.card.dataset.x = String(x);
+    drag.card.dataset.y = String(y);
+    drag.card.removeAttribute('data-auto');
+
+    await saveMemoPosition(drag.memoId, x, y);
+    if (state.boardDirty) { state.boardDirty = false; renderBoard(); }
+  }
+
+  // 키보드로 위치 이동: Shift + 화살표
+  function handleMemoKeydown(event) {
+    if (!event.shiftKey || !isCanvasMode()) return;
+    const hit = event.target.closest ? event.target.closest('.memo-hit') : null;
+    if (!hit) return;
+
+    let dx = 0;
+    let dy = 0;
+    if (event.key === 'ArrowLeft') dx = -HOLE;
+    else if (event.key === 'ArrowRight') dx = HOLE;
+    else if (event.key === 'ArrowUp') dy = -HOLE;
+    else if (event.key === 'ArrowDown') dy = HOLE;
+    else return;
+
+    const memoId = hit.dataset.memoId;
+    const memo = getMemo(state.boardKey, memoId);
+    if (!isMine(memo)) return;
+
+    const card = hit.closest('.memo');
+    event.preventDefault();
+    const x = snap(clamp(Number(card.dataset.x || 0) + dx, 0, CANVAS_W - MEMO_W));
+    const y = snap(Math.max(0, Number(card.dataset.y || 0) + dy));
+    card.style.left = x + 'px';
+    card.style.top = y + 'px';
+    card.dataset.x = String(x);
+    card.dataset.y = String(y);
+    saveMemoPosition(memoId, x, y);
+  }
+
+  // 타공판 빈 곳을 클릭하면 그 자리에 새 메모를 붙인다
+  function handleCanvasClick(event) {
+    if (!isCanvasMode() || event.target !== el.memoGrid) return;
+    const rect = el.memoGrid.getBoundingClientRect();
+    const x = snap(clamp(event.clientX - rect.left - MEMO_W / 2, 0, CANVAS_W - MEMO_W));
+    const y = snap(Math.max(0, event.clientY - rect.top - 20));
+    state.pendingPos = { x: x, y: y };
+    showDropHint(state.pendingPos);
+    state.modalReturn = { type: 'add' };
+    openMemoCompose();
   }
 
   /* =======================================================
@@ -2486,11 +3210,151 @@ input[type="password"]:focus {
     });
   }
 
+  // ---------- 사진 ----------
+  function renderDraftImages() {
+    el.imageGrid.replaceChildren();
+    state.draftImages.forEach((img) => {
+      const cell = document.createElement('div');
+      cell.className = 'img-thumb' + (img.file ? ' is-pending' : '');
+
+      const picture = document.createElement('img');
+      picture.src = img.url;
+      picture.alt = img.name ? img.name + ' 미리보기' : '올릴 사진 미리보기';
+      cell.appendChild(picture);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'img-del';
+      del.dataset.imageId = img.id;
+      del.setAttribute('aria-label', '이 사진 빼기');
+      del.textContent = '✕';
+      cell.appendChild(del);
+
+      el.imageGrid.appendChild(cell);
+    });
+    el.btnPickImage.disabled = state.draftImages.length >= MAX_IMAGES;
+  }
+
+  // 업로드 전에 브라우저에서 줄이고 압축한다
+  function resizeImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        const maxSide = state.mode === 'local' ? 800 : IMAGE_MAX_SIDE;
+        const ratio = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const w = Math.max(1, Math.round(image.width * ratio));
+        const h = Math.max(1, Math.round(image.height * ratio));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(image, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((blob) => {
+          if (!blob) { reject(new Error('사진을 변환하지 못했습니다.')); return; }
+          resolve({ blob: blob, w: w, h: h });
+        }, 'image/jpeg', state.mode === 'local' ? 0.6 : IMAGE_QUALITY);
+      };
+      image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('사진을 읽지 못했습니다.')); };
+      image.src = url;
+    });
+  }
+
+  async function addDraftImages(files) {
+    if (!state.store.storageAvailable) {
+      showToast('사진 저장소를 사용할 수 없어 사진을 넣을 수 없습니다.', 'error');
+      return;
+    }
+    const list = Array.prototype.slice.call(files || []);
+    for (const file of list) {
+      if (state.draftImages.length >= MAX_IMAGES) {
+        showToast('사진은 최대 ' + MAX_IMAGES + '장까지 넣을 수 있습니다.', 'error');
+        break;
+      }
+      if (!/^image\//.test(file.type)) {
+        showToast('이미지 파일만 넣을 수 있습니다.', 'error');
+        continue;
+      }
+      if (file.size > MAX_UPLOAD_BYTES) {
+        showToast('5MB 이하 사진만 넣을 수 있습니다.', 'error');
+        continue;
+      }
+      try {
+        const resized = await resizeImage(file);
+        state.draftImages.push({
+          id: createId(),
+          url: URL.createObjectURL(resized.blob),
+          path: '',
+          w: resized.w,
+          h: resized.h,
+          file: resized.blob,
+          name: file.name
+        });
+      } catch (err) {
+        console.warn('사진 처리 실패', err);
+        showToast(friendlyError(err), 'error');
+      }
+    }
+    renderDraftImages();
+  }
+
+  function removeDraftImage(imageId) {
+    const target = state.draftImages.filter((img) => img.id === imageId)[0];
+    if (!target) return;
+    if (target.file) URL.revokeObjectURL(target.url);
+    else if (target.path) state.removedImages.push(target.path);   // 저장할 때 Storage 에서 지운다
+    state.draftImages = state.draftImages.filter((img) => img.id !== imageId);
+    renderDraftImages();
+  }
+
+  // ---------- 형식 토글 ----------
+  function setDraftType(type, confirmSwitch) {
+    const next = type === 'free' ? 'free' : 'scrum';
+    if (next === state.draftType) return;
+
+    // 이미 쓴 내용이 있으면 잃게 된다는 걸 알린다
+    if (confirmSwitch) {
+      const filled = next === 'free'
+        ? (el.fYesterday.value.trim() || el.fToday.value.trim() ||
+           el.fBlockers.value.trim() || state.draftEvents.length)
+        : (el.fTitle.value.trim() || el.fBody.value.trim() || state.draftImages.length);
+      if (filled && !window.confirm('형식을 바꾸면 지금 입력한 내용은 사라집니다. 계속할까요?')) return;
+      if (filled) {
+        if (next === 'free') {
+          el.fYesterday.value = '';
+          el.fToday.value = '';
+          el.fBlockers.value = '';
+          state.draftEvents = [];
+          renderDraftEvents();
+        } else {
+          el.fTitle.value = '';
+          el.fBody.value = '';
+          state.draftImages.forEach((img) => { if (img.file) URL.revokeObjectURL(img.url); });
+          state.draftImages = [];
+          renderDraftImages();
+        }
+      }
+    }
+
+    state.draftType = next;
+    el.scrumFields.hidden = next !== 'scrum';
+    el.freeFields.hidden = next !== 'free';
+    el.segScrum.classList.toggle('is-on', next === 'scrum');
+    el.segFree.classList.toggle('is-on', next === 'free');
+    el.segScrum.setAttribute('aria-checked', next === 'scrum' ? 'true' : 'false');
+    el.segFree.setAttribute('aria-checked', next === 'free' ? 'true' : 'false');
+    el.typeSeg.classList.toggle('is-free', next === 'free');
+  }
+
   const editSignature = () => JSON.stringify([
+    state.draftType,
     el.fYesterday.value.trim(),
     el.fToday.value.trim(),
     el.fBlockers.value.trim(),
-    state.draftEvents.map((ev) => ev.title)
+    state.draftEvents.map((ev) => ev.title),
+    el.fTitle.value.trim(),
+    el.fBody.value.trim(),
+    state.draftImages.map((img) => img.id)
   ]);
 
   const isModalDirty = () =>
@@ -2503,23 +3367,71 @@ input[type="password"]:focus {
     el.sheet.focus();
   }
 
-  function openMemoView(uid) {
-    const key = state.boardKey;
-    if (!key || !hasMemo(key, uid)) return;
+  // ---------- 댓글 ----------
+  function renderComments(memo) {
+    el.commentCount.textContent = memo.comments.length ? String(memo.comments.length) : '';
+    el.commentList.replaceChildren();
 
-    const memo = getMemo(key, uid);
-    const nickname = memo.nickname || uid;
-    const isMine = uid === myId();
+    if (!memo.comments.length) {
+      const li = document.createElement('li');
+      li.className = 'comment-empty';
+      li.textContent = '아직 댓글이 없습니다.';
+      el.commentList.appendChild(li);
+      return;
+    }
+
+    memo.comments.forEach((comment) => {
+      const li = document.createElement('li');
+      li.className = 'comment-item';
+
+      const head = document.createElement('div');
+      head.className = 'comment-head';
+      const who = document.createElement('span');
+      who.className = 'comment-name';
+      who.textContent = comment.nickname || comment.authorId;
+      const when = document.createElement('span');
+      when.className = 'comment-time';
+      when.textContent = comment.createdAt ? formatUpdatedAt(comment.createdAt) : '';
+      head.appendChild(who);
+      head.appendChild(when);
+
+      if (comment.authorId === myId()) {      // 자기 댓글만 지울 수 있다
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'comment-del';
+        del.dataset.commentId = comment.id;
+        del.setAttribute('aria-label', '내 댓글 삭제');
+        del.textContent = '✕';
+        head.appendChild(del);
+      }
+      li.appendChild(head);
+
+      const text = document.createElement('p');
+      text.className = 'comment-text';
+      text.textContent = comment.text;        // XSS 방지
+      li.appendChild(text);
+
+      el.commentList.appendChild(li);
+    });
+  }
+
+  function openMemoView(memoId) {
+    const key = state.boardKey;
+    if (!key || !hasMemo(key, memoId)) return;
+
+    const memo = getMemo(key, memoId);
+    const nickname = memo.nickname || memo.authorId;
+    const mine = isMine(memo);
 
     state.modalMode = 'view';
-    state.modalOwner = uid;
-    state.modalReturn = { type: 'memo', owner: uid };
+    state.modalMemoId = memoId;
+    state.modalReturn = { type: 'memo', memoId: memoId };
     state.baseline = '';
 
-    el.sheetTitle.textContent = nickname + '님의 메모';
+    el.sheetTitle.textContent = nickname + '님의 ' + (memo.type === 'free' ? '자유 메모' : '스크럼 메모');
     el.sheetMeta.textContent = formatKoreanDate(fromKey(key)) +
       (memo.updatedAt ? ' · 마지막 저장 ' + formatUpdatedAt(memo.updatedAt) : '') +
-      (isMine ? '' : ' · 읽기 전용');
+      (mine ? '' : ' · 읽기 전용');
 
     el.viewBody.replaceChildren();
     const addRow = (label, value, isBlock) => {
@@ -2528,80 +3440,123 @@ input[type="password"]:focus {
       const dt = document.createElement('dt');
       dt.textContent = label;
       const dd = document.createElement('dd');
-      if (isBlock) dd.className = 'is-block';
-      dd.textContent = value;
+      dd.className = 'rich' + (isBlock ? ' is-block' : '');
+      renderRichText(dd, value);              // "- " 목록을 불릿으로
       row.appendChild(dt);
       row.appendChild(dd);
       el.viewBody.appendChild(row);
     };
-    addRow('어제 한 작업', memo.yesterday.trim() || '작성하지 않음', false);
-    addRow('오늘 할 작업', memo.today.trim() || '작성하지 않음', false);
-    addRow('막힌 점', memo.blockers.trim() || '작성하지 않음', hasBlocker(memo.blockers));
 
-    if (memo.events.length) {
-      const row = document.createElement('div');
-      row.className = 'view-row';
-      const dt = document.createElement('dt');
-      dt.textContent = '이벤트';
-      const dd = document.createElement('dd');
-      const wrap = document.createElement('span');
-      wrap.className = 'view-events';
-      memo.events.forEach((ev) => {
-        const chip = document.createElement('span');
-        chip.className = 'chip';
-        chip.textContent = ev.title;
-        wrap.appendChild(chip);
-      });
-      dd.appendChild(wrap);
-      row.appendChild(dt);
-      row.appendChild(dd);
-      el.viewBody.appendChild(row);
+    if (memo.type === 'free') {
+      if (memo.title.trim()) addRow('제목', memo.title.trim(), false);
+      addRow('내용', memo.body.trim() || '내용 없음', false);
+    } else {
+      addRow('어제 한 작업', memo.yesterday.trim() || '작성하지 않음', false);
+      addRow('오늘 할 작업', memo.today.trim() || '작성하지 않음', false);
+      addRow('막힌 점', memo.blockers.trim() || '작성하지 않음', hasBlocker(memo.blockers));
+
+      if (memo.events.length) {
+        const row = document.createElement('div');
+        row.className = 'view-row';
+        const dt = document.createElement('dt');
+        dt.textContent = '이벤트';
+        const dd = document.createElement('dd');
+        const wrap = document.createElement('span');
+        wrap.className = 'view-events';
+        memo.events.forEach((ev) => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = ev.title;
+          wrap.appendChild(chip);
+        });
+        dd.appendChild(wrap);
+        row.appendChild(dt);
+        row.appendChild(dd);
+        el.viewBody.appendChild(row);
+      }
     }
+
+    // 사진
+    el.viewImages.replaceChildren();
+    memo.images.forEach((img) => {
+      const figure = document.createElement('figure');
+      figure.className = 'view-image';
+      const picture = document.createElement('img');
+      picture.src = img.url;
+      picture.alt = nickname + '님이 올린 사진';
+      picture.loading = 'lazy';
+      figure.appendChild(picture);
+      el.viewImages.appendChild(figure);
+    });
+
+    renderComments(memo);
+    el.fComment.value = '';
 
     el.viewPane.hidden = false;
     el.editPane.hidden = true;
-    el.btnEdit.hidden = !isMine;      // 남의 메모는 읽기 전용
+    el.btnEdit.hidden = !mine;                // 남의 메모는 읽기 전용(댓글은 가능)
     el.btnSave.hidden = true;
-    el.btnDelete.hidden = !isMine;
+    el.btnDelete.hidden = !mine;
     el.btnCancel.textContent = '닫기';
 
-    showModal();
+    if (el.backdrop.hidden) showModal();
   }
 
-  // 화면에 열어 둔 남의 메모가 실시간으로 바뀌면 내용을 갱신한다
+  // 열어 둔 메모가 실시간으로 바뀌면 내용을 갱신한다
   function refreshViewIfNeeded() {
-    if (state.modalMode !== 'view' || !state.modalOwner) return;
-    if (!hasMemo(state.boardKey, state.modalOwner)) { closeModal(true); return; }
-    openMemoView(state.modalOwner);
+    if (state.modalMode !== 'view' || !state.modalMemoId) return;
+    if (!hasMemo(state.boardKey, state.modalMemoId)) { closeModal(true); return; }
+    const scroll = el.sheet.querySelector('.sheet-body').scrollTop;
+    openMemoView(state.modalMemoId);
+    el.sheet.querySelector('.sheet-body').scrollTop = scroll;
   }
 
-  // 내 메모 작성 / 수정 (이름 입력 없이 항상 내 닉네임으로 등록)
-  function openMyMemoEdit() {
+  // 새 메모 작성 (memoId 없이 호출) 또는 내 메모 수정
+  function openMemoCompose(memoId) {
     const key = state.boardKey;
     if (!key) return;
 
-    const memo = getMemo(key, myId());
-    const exists = hasMemo(key, myId());
+    const editing = !!memoId && hasMemo(key, memoId);
+    const memo = editing ? getMemo(key, memoId) : emptyMemo();
+    if (editing && !isMine(memo)) return;     // 남의 메모는 수정할 수 없다
 
     state.modalMode = 'edit';
-    state.modalOwner = myId();
+    state.modalMemoId = editing ? memoId : '';
     state.draftEvents = memo.events.map((ev) => ({ id: ev.id, title: ev.title }));
+    state.draftImages = memo.images.map((img) => ({
+      id: img.id, url: img.url, path: img.path, w: img.w, h: img.h
+    }));
+    state.removedImages = [];
+    state.draftType = memo.type === 'free' ? 'free' : 'scrum';
 
-    el.sheetTitle.textContent = exists ? '내 메모 수정' : '새 메모 붙이기';
+    el.sheetTitle.textContent = editing ? '메모 수정' : '새 메모 붙이기';
     el.sheetMeta.textContent = formatKoreanDate(fromKey(key)) + ' · ' + state.session.nickname +
       ' 이름으로 등록됩니다';
 
     el.fYesterday.value = memo.yesterday;
     el.fToday.value = memo.today;
     el.fBlockers.value = memo.blockers;
+    el.fTitle.value = memo.title;
+    el.fBody.value = memo.body;
     el.fEvent.value = '';
     renderDraftEvents();
+    renderDraftImages();
+
+    // 형식 토글을 현재 형식에 맞춘다(확인창 없이)
+    const wanted = state.draftType;
+    state.draftType = wanted === 'free' ? 'scrum' : 'free';
+    setDraftType(wanted, false);
+
+    el.imageHint.textContent = state.store.storageAvailable
+      ? '끌어다 놓거나 붙여넣기(Ctrl+V)도 됩니다. 최대 ' + MAX_IMAGES + '장.'
+      : '사진 저장소(Storage)가 준비되지 않아 사진을 넣을 수 없습니다.';
+    el.btnPickImage.disabled = !state.store.storageAvailable || state.draftImages.length >= MAX_IMAGES;
 
     el.viewPane.hidden = true;
     el.editPane.hidden = false;
     el.btnEdit.hidden = true;
     el.btnSave.hidden = false;
-    el.btnDelete.hidden = !exists;
+    el.btnDelete.hidden = !editing;
     el.btnCancel.textContent = '취소';
 
     state.baseline = editSignature();
@@ -2619,10 +3574,15 @@ input[type="password"]:focus {
     el.backdrop.hidden = true;
     el.board.removeAttribute('aria-hidden');
     state.modalMode = null;
-    state.modalOwner = '';
+    state.modalMemoId = '';
     state.modalReturn = null;
     state.draftEvents = [];
+    state.draftImages.forEach((img) => { if (img.file) URL.revokeObjectURL(img.url); });
+    state.draftImages = [];
+    state.removedImages = [];
     state.baseline = '';
+    state.pendingPos = null;
+    hideDropHint();
 
     if (state.boardKey) {
       document.body.classList.add('is-locked');
@@ -2634,7 +3594,7 @@ input[type="password"]:focus {
 
   function restoreBoardFocus(back) {
     if (back && back.type === 'memo') {
-      const hit = el.memoGrid.querySelector('.memo-hit[data-owner="' + cssEscape(back.owner) + '"]');
+      const hit = el.memoGrid.querySelector('.memo-hit[data-memo-id="' + cssEscape(back.memoId) + '"]');
       if (hit) { hit.focus(); return; }
     }
     el.btnAddMemo.focus();
@@ -2658,38 +3618,97 @@ input[type="password"]:focus {
     renderDraftEvents();
   }
 
-  // 저장: 내 아이디 자리에 덮어쓰므로 한 사람당 메모는 언제나 한 장
+  // 저장: 메모 ID 자리에 쓴다. 새 메모면 새 ID 라서 여러 장이 쌓인다.
   async function handleSaveMemo() {
     const key = state.boardKey;
     if (!key || state.modalMode !== 'edit' || state.busy) return;
 
-    const memo = emptyMemo();
-    memo.nickname = state.session.nickname;
-    memo.yesterday = el.fYesterday.value.trim().slice(0, MAX_TEXT_LEN);
-    memo.today = el.fToday.value.trim().slice(0, MAX_TEXT_LEN);
-    memo.blockers = el.fBlockers.value.trim().slice(0, MAX_TEXT_LEN);
-    memo.events = state.draftEvents.map((ev) => ({ id: ev.id, title: ev.title }));
-    memo.imported = false;
+    const editing = !!state.modalMemoId;
+    const previous = editing ? getMemo(key, state.modalMemoId) : emptyMemo();
+    const memoId = editing ? state.modalMemoId : 'memo_' + randomHex(8);
 
-    if (isEmptyMemo(memo)) {
+    const memo = emptyMemo();
+    memo.type = state.draftType;
+    memo.authorId = myId();
+    memo.nickname = state.session.nickname;
+    memo.createdAt = previous.createdAt || new Date().toISOString();
+
+    if (memo.type === 'free') {
+      memo.title = el.fTitle.value.trim().slice(0, MAX_TITLE_LEN);
+      memo.body = el.fBody.value.trim().slice(0, MAX_TEXT_LEN);
+    } else {
+      memo.yesterday = el.fYesterday.value.trim().slice(0, MAX_TEXT_LEN);
+      memo.today = el.fToday.value.trim().slice(0, MAX_TEXT_LEN);
+      memo.blockers = el.fBlockers.value.trim().slice(0, MAX_TEXT_LEN);
+      memo.events = state.draftEvents.map((ev) => ({ id: ev.id, title: ev.title }));
+    }
+
+    // 사진이 없는 상태에서 글도 비어 있으면 저장하지 않는다
+    if (isEmptyMemo(memo) && !state.draftImages.length) {
       showToast('내용을 한 가지 이상 입력해 주세요.', 'error');
-      el.fYesterday.focus();
+      (memo.type === 'free' ? el.fBody : el.fYesterday).focus();
       return;
     }
 
-    const existed = hasMemo(key, myId());
+    // 위치: 클릭해서 지정한 자리 > 원래 자리 > 자동 배치
+    if (state.pendingPos) {
+      memo.x = state.pendingPos.x;
+      memo.y = state.pendingPos.y;
+    } else if (previous.x !== null && previous.y !== null) {
+      memo.x = previous.x;
+      memo.y = previous.y;
+    } else if (isCanvasMode()) {
+      const occupied = [];
+      memoIds(key).forEach((id) => {
+        const other = getMemo(key, id);
+        if (id !== memoId && other.x !== null && other.y !== null) occupied.push({ x: other.x, y: other.y });
+      });
+      const pos = autoPlace(occupied);
+      memo.x = pos.x;
+      memo.y = pos.y;
+    }
+
+    memo.comments = previous.comments.map((c) => ({
+      id: c.id, authorId: c.authorId, nickname: c.nickname, text: c.text, createdAt: c.createdAt
+    }));
     memo.updatedAt = new Date().toISOString();
 
     setBusy(true);
     try {
-      await state.store.setMemo(state.calendar.id, key, myId(), memo);
-      state.pinnedOwner = myId();
-      state.modalReturn = { type: 'memo', owner: myId() };
+      // 자유 메모의 새 사진을 먼저 업로드한다
+      if (memo.type === 'free') {
+        const uploaded = [];
+        for (const img of state.draftImages) {
+          if (!img.file) {
+            uploaded.push({ id: img.id, url: img.url, path: img.path, w: img.w, h: img.h });
+            continue;
+          }
+          el.sheetMeta.textContent = '사진 업로드 중… (' + (uploaded.length + 1) + '/' + state.draftImages.length + ')';
+          const result = await state.store.uploadImage(state.calendar.id, key, memoId, img.id, img.file);
+          uploaded.push({ id: img.id, url: result.url, path: result.path, w: img.w, h: img.h });
+        }
+        memo.images = uploaded;
+      }
+
+      await state.store.setMemo(state.calendar.id, key, memoId, memo);
+
+      // 저장이 끝난 뒤 빠진 사진을 지운다
+      for (const path of state.removedImages) {
+        if (path) await state.store.deleteImage(path);
+      }
+
+      state.pinnedMemoId = memoId;
+      state.modalReturn = { type: 'memo', memoId: memoId };
       closeModal(true);
-      showToast(existed ? '메모를 수정했습니다.' : '메모를 붙였습니다.');
+      showToast(editing ? '메모를 수정했습니다.' : '메모를 붙였습니다.');
     } catch (err) {
       console.warn('저장 실패', err);
-      showToast(friendlyError(err), 'error');
+      const uploading = memo.type === 'free' && state.draftImages.some((img) => img.file);
+      showToast(uploading
+        ? '사진을 올리지 못했습니다. Firebase 콘솔에서 Storage 가 켜져 있는지 확인해 주세요.'
+        : friendlyError(err), 'error');
+      el.sheetMeta.textContent = formatKoreanDate(fromKey(key)) + ' · ' + state.session.nickname +
+        ' 이름으로 등록됩니다';
     } finally {
       setBusy(false);
     }
@@ -2697,17 +3716,23 @@ input[type="password"]:focus {
 
   async function handleDeleteMemo() {
     const key = state.boardKey;
-    const uid = state.modalOwner;
-    if (!key || uid !== myId() || !hasMemo(key, uid) || state.busy) return;
+    const memoId = state.modalMemoId;
+    if (!key || !memoId || !hasMemo(key, memoId) || state.busy) return;
+
+    const memo = getMemo(key, memoId);
+    if (!isMine(memo)) return;
 
     const ok = window.confirm(
-      formatKoreanDate(fromKey(key)) + '의 내 메모를 삭제할까요?\n\n다른 사람의 메모는 그대로 유지됩니다.'
+      formatKoreanDate(fromKey(key)) + '의 이 메모를 삭제할까요?\n\n다른 메모는 그대로 유지됩니다.'
     );
     if (!ok) return;
 
     setBusy(true);
     try {
-      await state.store.deleteMemo(state.calendar.id, key, uid);
+      await state.store.deleteMemo(state.calendar.id, key, memoId);
+      for (const img of memo.images) {
+        if (img.path) await state.store.deleteImage(img.path);
+      }
       state.modalReturn = { type: 'add' };
       closeModal(true);
       showToast('메모를 삭제했습니다.');
@@ -2717,6 +3742,94 @@ input[type="password"]:focus {
     } finally {
       setBusy(false);
     }
+  }
+
+  // ---------- 댓글 등록 / 삭제 ----------
+  async function handleAddComment() {
+    const key = state.boardKey;
+    const memoId = state.modalMemoId;
+    if (!key || !memoId || state.busy) return;
+
+    const text = el.fComment.value.trim().slice(0, MAX_COMMENT_LEN);
+    if (!text) {
+      showToast('댓글 내용을 입력해 주세요.', 'error');
+      el.fComment.focus();
+      return;
+    }
+
+    const comment = {
+      id: createId(),
+      authorId: myId(),
+      nickname: state.session.nickname,
+      text: text,
+      createdAt: new Date().toISOString()
+    };
+
+    setBusy(true);
+    try {
+      await state.store.addComment(state.calendar.id, key, memoId, comment);
+      el.fComment.value = '';
+      el.fComment.focus();
+    } catch (err) {
+      console.warn('댓글 등록 실패', err);
+      showToast(friendlyError(err), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteComment(commentId) {
+    const key = state.boardKey;
+    const memoId = state.modalMemoId;
+    if (!key || !memoId || state.busy) return;
+
+    const memo = getMemo(key, memoId);
+    const target = memo.comments.filter((c) => c.id === commentId)[0];
+    if (!target || target.authorId !== myId()) return;
+    if (!window.confirm('이 댓글을 삭제할까요?')) return;
+
+    // arrayRemove 는 저장된 값과 정확히 같아야 하므로 원본 객체를 쓴다
+    const raw = (memo.__rawComments || []).filter((c) => c && c.id === commentId)[0] || target;
+
+    setBusy(true);
+    try {
+      await state.store.removeComment(state.calendar.id, key, memoId, raw);
+    } catch (err) {
+      console.warn('댓글 삭제 실패', err);
+      showToast(friendlyError(err), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* =======================================================
+     "- " 목록 입력 도우미 (노션 방식)
+     ======================================================= */
+  function handleListKeydown(event) {
+    if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.metaKey) return;
+
+    const area = event.target;
+    const value = area.value;
+    const caret = area.selectionStart;
+    if (caret !== area.selectionEnd) return;
+
+    const lineStart = value.lastIndexOf('\n', caret - 1) + 1;
+    const line = value.slice(lineStart, caret);
+    const match = /^(\s*)-\s(.*)$/.exec(line);
+    if (!match) return;
+
+    event.preventDefault();
+    if (!match[2].trim()) {
+      // 빈 목록 줄에서 Enter -> 목록에서 빠져나온다
+      const next = value.slice(0, lineStart) + value.slice(caret);
+      area.value = next;
+      area.selectionStart = area.selectionEnd = lineStart;
+    } else {
+      const insert = '\n' + match[1] + '- ';
+      area.value = value.slice(0, caret) + insert + value.slice(caret);
+      area.selectionStart = area.selectionEnd = caret + insert.length;
+    }
+    area.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   /* =======================================================
@@ -2832,16 +3945,18 @@ input[type="password"]:focus {
     const matches = [];
     Object.keys(days).sort().reverse().forEach((key) => {
       const memos = days[key].memos || {};
-      Object.keys(memos).forEach((uid) => {
-        const memo = normalizeMemo(memos[uid], uid);
-        const nickname = memo.nickname || uid;
+      Object.keys(memos).forEach((memoId) => {
+        const memo = normalizeMemo(memos[memoId], memoId);
+        const nickname = memo.nickname || memo.authorId;
         const haystack = [
           nickname, memo.yesterday, memo.today, memo.blockers,
-          memo.events.map((ev) => ev.title).join(' ')
+          memo.events.map((ev) => ev.title).join(' '),
+          memo.title, memo.body,
+          memo.comments.map((c) => c.nickname + ' ' + c.text).join(' ')
         ].join('\n').toLowerCase();
 
         if (terms.every((term) => haystack.indexOf(term) >= 0)) {
-          matches.push({ key: key, uid: uid, memo: memo, nickname: nickname });
+          matches.push({ key: key, memoId: memoId, memo: memo, nickname: nickname });
         }
       });
     });
@@ -2933,9 +4048,18 @@ input[type="password"]:focus {
       rows.appendChild(row);
     };
 
-    addRow('어제', match.memo.yesterday);
-    addRow('오늘', match.memo.today);
-    addRow('막힌 점', match.memo.blockers);
+    if (match.memo.type === 'free') {
+      addRow('제목', match.memo.title);
+      addRow('내용', match.memo.body);
+      if (match.memo.images.length) addRow('사진', match.memo.images.length + '장');
+    } else {
+      addRow('어제', match.memo.yesterday);
+      addRow('오늘', match.memo.today);
+      addRow('막힌 점', match.memo.blockers);
+    }
+    if (match.memo.comments.length) {
+      addRow('댓글', match.memo.comments.map((c) => c.nickname + ': ' + c.text).join(' / '));
+    }
     if (match.memo.events.length) {
       addRow('이벤트', match.memo.events.map((ev) => ev.title).join(', '));
     }
@@ -2961,20 +4085,34 @@ input[type="password"]:focus {
     setBusy(true);
     try {
       const days = await state.store.fetchAllDays(state.calendar.id);
-      // 예전 형식과 호환되도록 닉네임을 키로 내보낸다
+      // 메모 ID 를 키로 하는 현재 구조 그대로 내보낸다
       const output = {};
       Object.keys(days).sort().forEach((key) => {
         const memos = days[key].memos || {};
         const bucket = {};
-        Object.keys(memos).forEach((uid) => {
-          const memo = normalizeMemo(memos[uid], uid);
-          bucket[memo.nickname || uid] = {
-            yesterday: memo.yesterday,
-            today: memo.today,
-            blockers: memo.blockers,
-            events: memo.events,
+        Object.keys(memos).forEach((memoId) => {
+          const memo = normalizeMemo(memos[memoId], memoId);
+          const row = {
+            type: memo.type,
+            authorId: memo.authorId,
+            nickname: memo.nickname,
+            comments: memo.comments,
+            createdAt: memo.createdAt,
             updatedAt: memo.updatedAt
           };
+          if (memo.x !== null) row.x = memo.x;
+          if (memo.y !== null) row.y = memo.y;
+          if (memo.type === 'free') {
+            row.title = memo.title;
+            row.body = memo.body;
+            row.images = memo.images;
+          } else {
+            row.yesterday = memo.yesterday;
+            row.today = memo.today;
+            row.blockers = memo.blockers;
+            row.events = memo.events;
+          }
+          bucket[memoId] = row;
         });
         if (Object.keys(bucket).length) output[key] = bucket;
       });
@@ -3021,17 +4159,31 @@ input[type="password"]:focus {
       const looksFlat = typeof raw.yesterday === 'string' || typeof raw.today === 'string' ||
         typeof raw.blockers === 'string' || Array.isArray(raw.events);
 
-      const put = (nickname, value) => {
-        const nick = cleanName(nickname);
+      const put = (label, value) => {
+        const nick = cleanName(label);
         if (!nick) return;
         const memo = normalizeMemo(value, nick);
-        memo.nickname = nick;
+        // 주인을 알 수 없으므로 '가져온 기록'으로 표시하고 수정할 수 없게 한다
+        memo.nickname = cleanName(memo.nickname) || nick;
+        memo.authorId = 'import_' + nick;
         memo.imported = true;
-        if (!isEmptyMemo(memo)) memos['import_' + nick] = memo;
+        memo.x = null;
+        memo.y = null;
+        memo.comments = [];
+        delete memo.__rawComments;
+        if (!isEmptyMemo(memo)) memos['import_' + nick + '_' + randomHex(4)] = memo;
       };
 
-      if (looksFlat) put('가져온 기록', raw);
-      else Object.keys(raw).forEach((nickname) => put(nickname, raw[nickname]));
+      if (looksFlat) {
+        put('가져온 기록', raw);
+      } else {
+        Object.keys(raw).forEach((label) => {
+          const value = raw[label];
+          if (!value || typeof value !== 'object') return;
+          // 새 형식(메모 ID 키)이면 저장된 닉네임을 쓰고, 예전 형식이면 키가 닉네임이다
+          put(cleanName(value.nickname) || label, value);
+        });
+      }
 
       if (Object.keys(memos).length) days[key] = { memos: memos };
     });
@@ -3207,16 +4359,56 @@ input[type="password"]:focus {
     // 게시판
     el.btnBack.addEventListener('click', closeBoard);
     el.btnAddMemo.addEventListener('click', () => {
+      state.pendingPos = null;                 // 빈 자리를 자동으로 찾는다
+      hideDropHint();
       state.modalReturn = { type: 'add' };
-      openMyMemoEdit();
+      openMemoCompose();                       // 이미 쓴 메모가 있어도 항상 새 메모
     });
+
+    // 메모 열기 / 빈 곳 클릭해 붙이기
     el.memoGrid.addEventListener('click', (event) => {
+      if (state.suppressClick) { event.stopPropagation(); return; }
       const hit = event.target.closest('.memo-hit');
-      if (hit) openMemoView(hit.dataset.owner);
+      if (hit) { openMemoView(hit.dataset.memoId); return; }
+      handleCanvasClick(event);
     });
+
+    // 드래그로 옮기기
+    el.memoGrid.addEventListener('pointerdown', handleBoardPointerDown);
+    el.memoGrid.addEventListener('pointermove', handleBoardPointerMove);
+    el.memoGrid.addEventListener('pointerup', handleBoardPointerUp);
+    el.memoGrid.addEventListener('pointercancel', handleBoardPointerUp);
+    el.memoGrid.addEventListener('keydown', handleMemoKeydown);
+    el.memoGrid.addEventListener('dragstart', (event) => event.preventDefault());
+
     el.board.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); closeBoard(); }
       else if (event.key === 'Tab') trapTab(el.board, event);
+    });
+
+    // 화면 폭이 바뀌면 자유 배치 <-> 목록 전환
+    const redrawBoard = () => {
+      if (!state.boardKey || state.drag) return;
+      renderBoard();
+    };
+    // 판 크기 변화를 직접 감시한다(창 resize 이벤트가 오지 않는 환경 대비)
+    if (window.ResizeObserver) {
+      const observer = new ResizeObserver(() => {
+        if (!state.boardKey || state.drag) return;
+        const shouldBeCanvas = isCanvasMode();
+        if (shouldBeCanvas !== el.memoGrid.classList.contains('is-canvas')) renderBoard();
+      });
+      observer.observe(el.boardSurface);
+    }
+    if (window.matchMedia) {
+      const wide = window.matchMedia('(min-width: ' + CANVAS_MIN_W + 'px)');
+      if (wide.addEventListener) wide.addEventListener('change', redrawBoard);
+      else if (wide.addListener) wide.addListener(redrawBoard);
+    }
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      if (resizeTimer) window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => { resizeTimer = null; redrawBoard(); }, 180);
     });
 
     // 모달
@@ -3237,7 +4429,9 @@ input[type="password"]:focus {
         handleSaveMemo();
       }
     });
-    el.btnEdit.addEventListener('click', () => { if (state.modalOwner === myId()) openMyMemoEdit(); });
+    el.btnEdit.addEventListener('click', () => {
+      if (state.modalMemoId) openMemoCompose(state.modalMemoId);
+    });
     el.btnSave.addEventListener('click', handleSaveMemo);
     el.btnDelete.addEventListener('click', handleDeleteMemo);
     el.btnAddEvent.addEventListener('click', handleAddEvent);
@@ -3247,6 +4441,65 @@ input[type="password"]:focus {
     el.eventList.addEventListener('click', (event) => {
       const button = event.target.closest('.event-del');
       if (button) handleDeleteDraftEvent(button.dataset.eventId);
+    });
+
+    // 형식 토글 (클릭 / 좌우 화살표)
+    el.typeSeg.addEventListener('click', (event) => {
+      const button = event.target.closest('.seg-btn');
+      if (button) setDraftType(button.dataset.type, true);
+    });
+    el.typeSeg.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      const next = state.draftType === 'scrum' ? 'free' : 'scrum';
+      setDraftType(next, true);
+      (next === 'free' ? el.segFree : el.segScrum).focus();
+    });
+
+    // "- " 목록 입력
+    [el.fYesterday, el.fToday, el.fBlockers, el.fBody].forEach((area) => {
+      area.addEventListener('keydown', handleListKeydown);
+    });
+
+    // 사진: 선택 / 끌어다 놓기 / 붙여넣기
+    el.btnPickImage.addEventListener('click', () => el.fileImage.click());
+    el.fileImage.addEventListener('change', (event) => {
+      addDraftImages(event.target.files);
+      event.target.value = '';
+    });
+    el.imageGrid.addEventListener('click', (event) => {
+      const button = event.target.closest('.img-del');
+      if (button) removeDraftImage(button.dataset.imageId);
+    });
+    el.freeFields.addEventListener('dragover', (event) => {
+      if (state.modalMode !== 'edit' || state.draftType !== 'free') return;
+      event.preventDefault();
+      el.freeFields.classList.add('is-dropping');
+    });
+    el.freeFields.addEventListener('dragleave', () => el.freeFields.classList.remove('is-dropping'));
+    el.freeFields.addEventListener('drop', (event) => {
+      if (state.modalMode !== 'edit' || state.draftType !== 'free') return;
+      event.preventDefault();
+      el.freeFields.classList.remove('is-dropping');
+      if (event.dataTransfer && event.dataTransfer.files) addDraftImages(event.dataTransfer.files);
+    });
+    el.sheet.addEventListener('paste', (event) => {
+      if (state.modalMode !== 'edit' || state.draftType !== 'free') return;
+      const items = event.clipboardData && event.clipboardData.files;
+      if (items && items.length) {
+        event.preventDefault();
+        addDraftImages(items);
+      }
+    });
+
+    // 댓글
+    el.btnAddComment.addEventListener('click', handleAddComment);
+    el.fComment.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); handleAddComment(); }
+    });
+    el.commentList.addEventListener('click', (event) => {
+      const button = event.target.closest('.comment-del');
+      if (button) handleDeleteComment(button.dataset.commentId);
     });
 
     // 검색
@@ -3277,7 +4530,10 @@ input[type="password"]:focus {
       'board', 'btnBack', 'boardDate', 'boardCount', 'btnAddMemo', 'boardSurface',
       'memoGrid', 'boardEmpty',
       'backdrop', 'sheet', 'sheetTitle', 'sheetMeta', 'btnClose', 'viewPane', 'viewBody',
-      'editPane', 'fYesterday', 'fToday', 'fBlockers', 'fEvent', 'btnAddEvent', 'eventList',
+      'viewImages', 'commentTitle', 'commentCount', 'commentList', 'fComment', 'btnAddComment',
+      'editPane', 'typeSeg', 'segScrum', 'segFree', 'scrumFields', 'freeFields',
+      'fYesterday', 'fToday', 'fBlockers', 'fEvent', 'btnAddEvent', 'eventList',
+      'fTitle', 'fBody', 'btnPickImage', 'fileImage', 'imageHint', 'imageGrid',
       'btnDelete', 'btnCancel', 'btnEdit', 'btnSave',
       'searchScreen', 'searchInput', 'btnSearchClose', 'searchStatus', 'searchResults',
       'toast'
