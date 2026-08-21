@@ -881,12 +881,15 @@ input[type="password"]:focus {
   padding: 26px 20px 60px;
   background-color: var(--board-bg);
   background-image:
-    radial-gradient(circle 3.4px at 50% 46%, rgba(17, 24, 39, 0.30) 0 40%,
+    radial-gradient(circle 3.4px at 50% 50%, rgba(17, 24, 39, 0.30) 0 40%,
       rgba(17, 24, 39, 0.14) 62%, rgba(255, 255, 255, 0.72) 80%, transparent 84%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(0, 0, 0, 0.05));
   background-size: 28px 28px, 100% 100%;
-  background-position: 14px 14px, 0 0;
+  background-position: 0 0, 0 0;
 }
+/* 자유 배치에서는 구멍 무늬를 캔버스가 직접 그린다.
+   메모 좌표와 원점이 같아야 압정이 구멍에 정확히 꽂힌다. */
+.board-surface.is-plain { background-image: linear-gradient(180deg, rgba(255,255,255,0.3), rgba(0,0,0,0.05)); }
 
 .memo-grid { list-style: none; margin: 0 auto; padding: 0; }
 
@@ -900,8 +903,19 @@ input[type="password"]:focus {
 }
 
 /* 자유 배치 캔버스(넓은 화면) */
-.memo-grid.is-canvas { position: relative; }
-.memo-grid.is-canvas .memo { position: absolute; width: 240px; margin: 0; }
+.memo-grid.is-canvas {
+  position: relative;
+  border-radius: 10px;
+  background-color: var(--board-bg);
+  /* 구멍 중심이 (14 + 28n, 14 + 28m) 에 오도록 그린다 */
+  background-image:
+    radial-gradient(circle 3.4px at 50% 50%, rgba(17, 24, 39, 0.30) 0 40%,
+      rgba(17, 24, 39, 0.14) 62%, rgba(255, 255, 255, 0.72) 80%, transparent 84%);
+  background-size: 28px 28px;
+  background-position: 0 0;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+}
+.memo-grid.is-canvas .memo { position: absolute; width: 252px; margin: 0; }
 .memo-grid.is-canvas .memo { touch-action: none; }
 .memo-grid.is-canvas .memo .memo-hit { cursor: grab; }
 .memo.is-dragging {
@@ -915,7 +929,7 @@ input[type="password"]:focus {
 /* 클릭한 자리에 표시되는 점선 자리표시 */
 .drop-hint {
   position: absolute;
-  width: 240px; height: 168px;
+  width: 252px; height: 168px;
   border: 2px dashed var(--blue);
   border-radius: 6px;
   background: rgba(37, 99, 235, 0.06);
@@ -934,9 +948,14 @@ input[type="password"]:focus {
 }
 
 .memo {
+  --pin-x: 126px;            /* 메모 폭 252의 절반 = 구멍과 맞는 지점 */
+  --pin-y: 14px;
+  --memo-border: 1px;
   position: relative;
   min-height: 168px;
   padding: 24px 14px 12px;
+  /* 압정을 축으로 기울어져야 어떤 각도에서도 구멍에서 벗어나지 않는다 */
+  transform-origin: var(--pin-x) var(--pin-y);
   display: flex; flex-direction: column; gap: 8px;
   background: var(--memo-bg, #fff8c5);
   border: 1px solid var(--memo-line, #f5e08a);
@@ -946,11 +965,31 @@ input[type="password"]:focus {
   transition: transform 0.14s ease, box-shadow 0.14s ease;
 }
 .memo:hover { transform: rotate(var(--tilt, 0deg)) translateY(-3px); box-shadow: 0 6px 14px rgba(17, 24, 39, 0.2); }
-.memo.is-pinned { animation: pinDrop 240ms cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+/* 판에 박히는 느낌: 살짝 내려와 꽂히고 압정을 축으로 아주 조금 흔들린다 */
+.memo.is-pinned { animation: pinDrop 280ms cubic-bezier(0.2, 0.85, 0.3, 1); }
+.memo.is-dropped { animation: pinSettle 200ms cubic-bezier(0.2, 0.85, 0.3, 1); }
+.memo.is-pinned .pin,
+.memo.is-dropped .pin { animation: pinPress 240ms ease-out; }
+
 @keyframes pinDrop {
-  0%   { transform: rotate(var(--tilt, 0deg)) scale(1.12); box-shadow: 0 12px 22px rgba(17, 24, 39, 0.26); }
-  70%  { transform: rotate(var(--tilt, 0deg)) scale(0.98); }
-  100% { transform: rotate(var(--tilt, 0deg)) scale(1); }
+  0%   { transform: rotate(var(--tilt, 0deg)) translateY(-14px) scale(1.03);
+         box-shadow: 0 14px 26px rgba(17, 24, 39, 0.26); }
+  55%  { transform: rotate(calc(var(--tilt, 0deg) + 1.4deg)) translateY(0) scale(1); }
+  78%  { transform: rotate(calc(var(--tilt, 0deg) - 0.8deg)); }
+  100% { transform: rotate(var(--tilt, 0deg)) translateY(0) scale(1);
+         box-shadow: 0 3px 8px rgba(17, 24, 39, 0.16); }
+}
+@keyframes pinSettle {
+  0%   { transform: rotate(calc(var(--tilt, 0deg) + 1.2deg)) scale(1.02);
+         box-shadow: 0 10px 20px rgba(17, 24, 39, 0.22); }
+  60%  { transform: rotate(calc(var(--tilt, 0deg) - 0.6deg)) scale(1); }
+  100% { transform: rotate(var(--tilt, 0deg)) scale(1);
+         box-shadow: 0 3px 8px rgba(17, 24, 39, 0.16); }
+}
+@keyframes pinPress {
+  0%   { transform: scale(1.25); }
+  50%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
 }
 
 .memo-hit {
@@ -965,9 +1004,12 @@ input[type="password"]:focus {
 
 .pin {
   position: absolute;
-  top: -8px; left: 50%;
+  /* 절대 위치는 패딩 박스 기준이라 테두리 두께만큼 빼야 테두리 박스 좌표와 맞는다 */
+  top: calc(var(--pin-y) - var(--memo-border));
+  left: calc(var(--pin-x) - var(--memo-border));
   width: 18px; height: 18px;
   margin-left: -9px;
+  margin-top: -9px;
   border-radius: 50%;
   background: radial-gradient(circle at 34% 30%, #ffffff 0 2px, #b6bdc7 3px, #737b87 62%, #4b5563 100%);
   box-shadow: 0 2px 3px rgba(17, 24, 39, 0.34);
@@ -1962,8 +2004,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   ];
   const MAX_IMAGE_CHARS = 900000;             // base64 길이 상한(문서 1MB 여유분)
   const HOLE = 28;                            // 타공판 구멍 간격 = 스냅 단위
-  const CANVAS_W = 1204;                      // 자유 배치 캔버스 폭(1280 화면에서 가로 스크롤이 안 생기게)
-  const MEMO_W = 240;                         // 캔버스 모드 메모 폭
+  const CANVAS_W = 1204;                      // 자유 배치 캔버스 폭(28의 배수)
+  // 메모 폭을 252(28*9)로 두면 가로 중앙이 126이 되고,
+  // x = 28a 로 스냅했을 때 압정 중심이 28a + 126 = 14 + 28(a+4) 즉 구멍 정중앙에 온다.
+  const MEMO_W = 252;
+  const PIN_X = MEMO_W / 2;                   // 126
+  const PIN_Y = HOLE / 2;                     // 14 (메모 안쪽으로 박힌다)
   const MEMO_H = 200;                         // 자동 배치용 기준 높이
   const CANVAS_MIN_W = 721;                   // 이 폭 이상에서만 자유 배치 + 드래그
   const DRAG_THRESHOLD = 5;
@@ -2033,6 +2079,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     pendingPos: null,       // 타공판을 클릭해 지정한 위치 { x, y }
     baseline: '',
     pinnedMemoId: '',
+    pinnedKind: '',         // 'save' | 'drop'
+    pinnedTimer: null,
     drag: null,             // 드래그 중인 상태
     suppressClick: false,
     boardDirty: false,      // 드래그 중 들어온 갱신을 나중에 반영
@@ -4732,6 +4780,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     const canvas = isCanvasMode();
     el.memoGrid.classList.toggle('is-canvas', canvas);
     el.memoGrid.classList.toggle('is-list', !canvas);
+    // 캔버스가 구멍 무늬를 직접 그리므로 판 표면은 민무늬로 둔다
+    el.boardSurface.classList.toggle('is-plain', canvas);
     el.memoGrid.replaceChildren();
 
     const occupied = [];
@@ -4786,10 +4836,14 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (state.pinnedMemoId) {
       const target = el.memoGrid.querySelector('.memo[data-memo-id="' + cssEscape(state.pinnedMemoId) + '"]');
       if (target) {
-        target.classList.add('is-pinned');
-        window.setTimeout(() => target.classList.remove('is-pinned'), 300);
+        // 저장은 '박히는' 동작, 드롭은 짧게 자리 잡는 동작
+        const kind = state.pinnedKind === 'drop' ? 'is-dropped' : 'is-pinned';
+        target.classList.add(kind);
+        window.setTimeout(() => target.classList.remove(kind), 320);
+        state.pinnedMemoId = '';
+        state.pinnedKind = '';
       }
-      state.pinnedMemoId = '';
+      // 아직 화면에 없으면(저장 결과가 도착하기 전) 다음 렌더에서 적용한다
     }
   }
 
@@ -4959,7 +5013,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     drag.card.removeAttribute('data-auto');
 
     await saveMemoPosition(drag.memoId, x, y);
-    if (state.boardDirty) { state.boardDirty = false; renderBoard(); }
+    state.boardDirty = false;
+    state.pinnedMemoId = drag.memoId;
+    state.pinnedKind = 'drop';
+    renderBoard();
   }
 
   // 키보드로 위치 이동: Shift + 화살표
@@ -5522,6 +5579,15 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     }));
     memo.updatedAt = new Date().toISOString();
 
+    // 저장 결과가 화면에 그려질 때 박히는 애니메이션이 붙도록 미리 표시해 둔다
+    state.pinnedMemoId = memoId;
+    state.pinnedKind = 'save';
+    if (state.pinnedTimer) window.clearTimeout(state.pinnedTimer);
+    state.pinnedTimer = window.setTimeout(() => {
+      state.pinnedMemoId = '';
+      state.pinnedKind = '';
+    }, 4000);
+
     setBusy(true);
     try {
       // 자유 메모의 새 사진을 먼저 따로 저장한다(메모 문서에는 참조만 남는다)
@@ -5548,12 +5614,13 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         if (path) await state.store.deleteImage(state.calendar.id, path);
       }
 
-      state.pinnedMemoId = memoId;
       state.modalReturn = { type: 'memo', memoId: memoId };
       closeModal(true);
       showToast(editing ? '메모를 수정했습니다.' : '메모를 붙였습니다.');
     } catch (err) {
       console.warn('저장 실패', err);
+      state.pinnedMemoId = '';
+      state.pinnedKind = '';
       const uploading = memo.type === 'free' && state.draftImages.some((img) => img.data);
       const denied = /permission|insufficient/i.test(String((err && err.code) || (err && err.message) || ''));
       showToast(uploading
