@@ -298,25 +298,109 @@ input[type="password"]:focus {
   padding: 4px 9px;
 }
 
-.members {
+/* =========================================================
+   팀원 프로필
+   ========================================================= */
+.team { margin-bottom: 14px; }
+.team-count { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+
+/* 칸이나 구분선 없이 같은 간격으로만 늘어놓는다 */
+.profile-strip {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 26px;
+}
+.profile-item {
+  appearance: none;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  padding: 4px 2px;
+  width: 86px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 6px;
-  margin-bottom: 12px;
-  font-size: 12px;
+  cursor: pointer;
+  border-radius: 10px;
+}
+.profile-item:hover .avatar { transform: translateY(-2px); }
+.profile-item:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+
+.avatar {
+  width: 48px; height: 48px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--avatar-bg, #e5e7eb);
+  color: var(--avatar-ink, #4b5563);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  font-size: 18px;
+  font-weight: 800;
+  transition: transform 0.14s ease;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar.avatar-lg { width: 84px; height: 84px; font-size: 30px; }
+.profile-item.is-me .avatar { box-shadow: 0 0 0 2px var(--blue); }
+
+.profile-label { min-width: 0; width: 100%; text-align: center; }
+.profile-name {
+  margin: 0;
+  font-size: 12.5px; font-weight: 700;
+  color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.profile-role {
+  margin: 1px 0 0;
+  font-size: 11px;
   color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.member-chip {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--text-2);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 3px 9px;
+.profile-role.is-empty { color: #b6bcc6; font-style: italic; }
+.profile-me-tag {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 10px; font-weight: 700;
+  color: var(--blue-dark);
 }
-.member-chip.is-me { background: var(--blue-soft); border-color: var(--blue-line); color: var(--blue-dark); }
+
+/* 프로필 모달 */
+.profile-hero { display: flex; align-items: center; gap: 14px; }
+.profile-hero-text { min-width: 0; }
+.profile-hero-name { margin: 0; font-size: 18px; font-weight: 800; word-break: break-word; }
+.profile-hero-role { margin: 2px 0 0; font-size: 13px; color: var(--muted); word-break: break-word; }
+.profile-empty { margin: 0; font-size: 13px; color: var(--muted); }
+
+.privacy-note {
+  margin: 0;
+  font-size: 12.5px; line-height: 1.7;
+  color: var(--amber-ink);
+  background: var(--amber-soft);
+  border: 1px solid var(--amber-line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.avatar-edit { display: flex; align-items: center; gap: 14px; }
+.avatar-actions { display: flex; flex-direction: column; gap: 6px; }
+
+.extra-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.extra-item { display: flex; gap: 6px; align-items: center; }
+.extra-item input { min-width: 0; }
+.extra-item .extra-label { flex: 0 0 34%; }
+.extra-item .extra-value { flex: 1 1 auto; }
+.extra-del {
+  appearance: none; font: inherit;
+  flex: none;
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border: 1px solid transparent; border-radius: 7px;
+  background: transparent; color: var(--muted);
+  font-size: 12px; cursor: pointer;
+}
+.extra-del:hover { background: #eceef1; color: var(--text-2); }
 
 .invite-box {
   display: flex;
@@ -1186,7 +1270,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     </div>
   </header>
 
-  <p class="members" id="memberList"></p>
+  <!-- 팀원 프로필 -->
+  <section class="team" aria-labelledby="teamLabel">
+    <p class="team-count" id="teamLabel"></p>
+    <div class="profile-strip" id="profileStrip"></div>
+  </section>
 
   <!-- 클립보드를 쓸 수 없을 때 직접 복사할 수 있는 상자 -->
   <div class="invite-box" id="inviteBox" hidden>
@@ -1383,6 +1471,107 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 </div>
 
 <!-- =========================================================
+     팀원 프로필 (보기 / 편집)
+     ========================================================= -->
+<div class="backdrop" id="profileBackdrop" hidden>
+  <div class="sheet" id="profileSheet" role="dialog" aria-modal="true"
+       aria-labelledby="profileTitle" tabindex="-1">
+    <header class="sheet-head">
+      <div>
+        <h2 class="sheet-title" id="profileTitle">프로필</h2>
+        <p class="sheet-meta" id="profileMeta"></p>
+      </div>
+      <button type="button" class="icon-btn" id="btnProfileClose" aria-label="닫기">&#10005;</button>
+    </header>
+
+    <div class="sheet-body">
+      <!-- 보기 -->
+      <div class="pane" id="profileView" hidden>
+        <div class="profile-hero">
+          <span class="avatar avatar-lg" id="profileHeroAvatar" aria-hidden="true"></span>
+          <div class="profile-hero-text">
+            <p class="profile-hero-name" id="profileViewName"></p>
+            <p class="profile-hero-role" id="profileViewRole"></p>
+          </div>
+        </div>
+        <dl class="view-body" id="profileFields"></dl>
+      </div>
+
+      <!-- 편집 -->
+      <div class="pane" id="profileEdit" hidden>
+        <p class="privacy-note">
+          여기에 적은 내용은 이 달력에 참여한 사람들이 볼 수 있습니다.
+          전화번호처럼 민감한 정보는 꼭 필요할 때만 적어주세요.
+        </p>
+
+        <div class="field">
+          <label for="btnPickAvatar">사진</label>
+          <div class="avatar-edit">
+            <span class="avatar avatar-lg" id="avatarPreview" aria-hidden="true"></span>
+            <div class="avatar-actions">
+              <button type="button" class="btn" id="btnPickAvatar">사진 선택</button>
+              <button type="button" class="btn" id="btnClearAvatar">사진 지우기</button>
+              <input type="file" id="fileAvatar" class="sr-only" accept="image/*"
+                     tabindex="-1" aria-label="프로필 사진 선택" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="pName">이름</label>
+          <input type="text" id="pName" maxlength="20" placeholder="예) 김싸피" autocomplete="off" />
+          <p class="hint">이름을 바꾸면 메모 작성자 이름과 참여자 목록에도 반영됩니다.</p>
+        </div>
+
+        <div class="field">
+          <label for="pRole">역할 · 포지션</label>
+          <input type="text" id="pRole" maxlength="40" placeholder="예) 팀장 / 프론트엔드" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="pPhone">전화번호</label>
+          <input type="text" id="pPhone" maxlength="30" placeholder="예) 010-0000-0000" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="pEmail">이메일</label>
+          <input type="text" id="pEmail" maxlength="60" placeholder="예) me@example.com" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="pMbti">MBTI</label>
+          <input type="text" id="pMbti" maxlength="12" placeholder="예) INFP" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="pSns">SNS 아이디</label>
+          <input type="text" id="pSns" maxlength="40" placeholder="예) @ssafy" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="pNote">기타</label>
+          <textarea id="pNote" rows="3" placeholder="자유롭게 적어주세요.&#10;- 로 시작하면 목록이 됩니다"></textarea>
+        </div>
+
+        <fieldset class="field">
+          <legend>추가 항목</legend>
+          <ul class="extra-list" id="extraList"></ul>
+          <button type="button" class="btn" id="btnAddExtra">항목 추가</button>
+          <p class="hint">깃허브, 노션 주소처럼 직접 정한 항목을 최대 5개까지 넣을 수 있습니다.</p>
+        </fieldset>
+      </div>
+    </div>
+
+    <footer class="sheet-foot">
+      <span class="foot-spacer"></span>
+      <button type="button" class="btn" id="btnProfileCancel">닫기</button>
+      <button type="button" class="btn primary" id="btnProfileEditStart">수정</button>
+      <button type="button" class="btn primary" id="btnProfileSave">저장</button>
+    </footer>
+  </div>
+</div>
+
+<!-- =========================================================
      검색
      ========================================================= -->
 <section class="search-screen" id="searchScreen" hidden role="dialog" aria-modal="true"
@@ -1436,6 +1625,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
                allow read, write: if request.auth != null;
              }
              // 자유 메모의 사진. Storage(유료 플랜) 대신 Firestore 문서에 담는다.
+             match /profiles/{userId} {      // 팀원 프로필(사진은 images 문서를 참조)
+               allow read: if request.auth != null;
+               allow write: if request.auth != null;
+             }
              match /images/{imageId} {
                allow read: if request.auth != null;
                allow create, update: if request.auth != null
@@ -1519,6 +1712,14 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     days: {},               // 구독 중인 달의 데이터 { 'YYYY-MM-DD': { memos: {...} } }
     unsubscribe: null,
     unsubscribeCalendar: null,
+    unsubscribeProfiles: null,
+    profiles: {},           // { 아이디: 프로필 }
+    profileTarget: '',      // 프로필 모달에서 보고 있는 사람
+    profileMode: null,      // 'view' | 'edit'
+    draftAvatar: null,      // { data, w, h } 또는 null(변경 없음)
+    avatarCleared: false,
+    removedAvatarId: '',
+    draftExtras: [],
     pendingInvite: '',      // 초대 링크로 들어온 달력 ID
     viewYear: 0,
     viewMonth: 0,
@@ -1781,6 +1982,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   function createLocalStore() {
     const listeners = new Set();
     const calListeners = new Set();
+    const profileListeners = new Set();
 
     function readDb() {
       try {
@@ -1791,10 +1993,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
           users: parsed.users && typeof parsed.users === 'object' ? parsed.users : {},
           calendars: parsed.calendars && typeof parsed.calendars === 'object' ? parsed.calendars : {},
           days: parsed.days && typeof parsed.days === 'object' ? parsed.days : {},
-          images: parsed.images && typeof parsed.images === 'object' ? parsed.images : {}
+          images: parsed.images && typeof parsed.images === 'object' ? parsed.images : {},
+          profiles: parsed.profiles && typeof parsed.profiles === 'object' ? parsed.profiles : {}
         };
       } catch (err) {
-        return { users: {}, calendars: {}, days: {}, images: {} };
+        return { users: {}, calendars: {}, days: {}, images: {}, profiles: {} };
       }
     }
 
@@ -1821,6 +2024,13 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       });
     }
 
+    function notifyProfiles() {
+      const db = readDb();
+      profileListeners.forEach((listener) => {
+        listener.cb(Object.assign({}, (db.profiles || {})[listener.calId] || {}));
+      });
+    }
+
     function collectRange(calId, start, end) {
       const db = readDb();
       const all = db.days[calId] || {};
@@ -1836,6 +2046,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       if (event.key !== LOCAL_DB_KEY) return;
       notify();
       notifyCalendars();
+      notifyProfiles();
     });
 
     return {
@@ -1879,6 +2090,21 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         Object.assign(db.calendars[calId], patch);
         writeDb(db);
         notifyCalendars();
+      },
+      async setProfile(calId, uid, profile) {
+        const db = readDb();
+        if (!db.profiles) db.profiles = {};
+        if (!db.profiles[calId]) db.profiles[calId] = {};
+        db.profiles[calId][uid] = profile;
+        writeDb(db);
+        notifyProfiles();
+      },
+      subscribeProfiles(calId, cb) {
+        const listener = { calId: calId, cb: cb };
+        profileListeners.add(listener);
+        const db = readDb();
+        cb(Object.assign({}, (db.profiles || {})[calId] || {}));
+        return () => profileListeners.delete(listener);
       },
       subscribeCalendar(calId, cb) {
         const listener = { calId: calId, cb: cb };
@@ -2039,6 +2265,17 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       async setGroundRules(calId, patch) {
         await updateDoc(doc(db, 'calendars', calId), patch);
       },
+      async setProfile(calId, uid, profile) {
+        await setDoc(doc(db, 'calendars', calId, 'profiles', uid), profile);
+      },
+      // 팀원 프로필도 실시간으로 갱신한다
+      subscribeProfiles(calId, cb) {
+        return onSnapshot(collection(db, 'calendars', calId, 'profiles'), (snapshot) => {
+          const result = {};
+          snapshot.forEach((docSnap) => { result[docSnap.id] = docSnap.data(); });
+          cb(result);
+        }, (err) => console.warn('프로필 구독 오류', err));
+      },
       // 참여자 목록이 실시간으로 갱신되도록 달력 문서도 구독한다
       subscribeCalendar(calId, cb) {
         return onSnapshot(doc(db, 'calendars', calId), (snap) => {
@@ -2166,10 +2403,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       name: store.name,
       storageAvailable: !!store.storageAvailable,
       subscribeRange: store.subscribeRange.bind(store),
-      subscribeCalendar: store.subscribeCalendar.bind(store)
+      subscribeCalendar: store.subscribeCalendar.bind(store),
+      subscribeProfiles: store.subscribeProfiles.bind(store)
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
-     'setGroundRules', 'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
+     'setGroundRules', 'setProfile', 'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
      'uploadImage', 'loadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
       guarded[key] = function () {
         const args = Array.prototype.slice.call(arguments);
@@ -2401,6 +2639,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (!window.confirm('로그아웃할까요?')) return;
     if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
     if (state.unsubscribeCalendar) { state.unsubscribeCalendar(); state.unsubscribeCalendar = null; }
+    if (state.unsubscribeProfiles) { state.unsubscribeProfiles(); state.unsubscribeProfiles = null; }
+    state.profiles = {};
     clearSession();
     state.calendar = null;
     state.days = {};
@@ -2432,7 +2672,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     state.unsubscribeCalendar = state.store.subscribeCalendar(calendar.id, (fresh) => {
       state.calendar = fresh;
       el.calendarName.textContent = fresh.name || '팀 달력';
-      renderMembers();
+      renderProfiles();
       if (el.groundEdit.hidden) renderGroundRules();   // 편집 중이면 건드리지 않는다
     });
 
@@ -2442,7 +2682,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     el.modeTag.hidden = state.mode !== 'local';
     el.whoName.textContent = session.nickname;
     el.calendarName.textContent = calendar.name || '팀 달력';
-    renderMembers();
+    renderProfiles();
     renderGroundRules();
 
     const today = startOfToday();
@@ -2450,9 +2690,26 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     state.viewMonth = today.getMonth();
     state.focusKey = toKey(today);
 
+    subscribeProfiles();
     subscribeMonth();
     renderCalendar();
     cleanUrl();          // 합류가 끝났으니 주소에서 초대 파라미터를 지운다
+  }
+
+  // 팀원 프로필을 실시간으로 구독한다
+  function subscribeProfiles() {
+    if (!state.calendar) return;
+    if (state.unsubscribeProfiles) { state.unsubscribeProfiles(); state.unsubscribeProfiles = null; }
+    try {
+      state.unsubscribeProfiles = state.store.subscribeProfiles(state.calendar.id, (profiles) => {
+        state.profiles = profiles || {};
+        renderProfiles();
+        // 열어 둔 프로필이 바뀌면 내용도 갱신한다(편집 중에는 두고 본다)
+        if (state.profileMode === 'view' && state.profileTarget) openProfileView(state.profileTarget);
+      });
+    } catch (err) {
+      console.warn('프로필 구독 실패', err);
+    }
   }
 
   // 보이는 달의 범위만 구독한다
@@ -2558,26 +2815,404 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     }
   }
 
-  function renderMembers() {
+  /* =======================================================
+     팀원 프로필
+     ======================================================= */
+  const MAX_EXTRAS = 5;
+
+  function emptyProfile() {
+    return { role: '', photoId: '', phone: '', email: '', mbti: '', sns: '', note: '', extras: [], updatedAt: '' };
+  }
+
+  function normalizeProfile(raw) {
+    const profile = emptyProfile();
+    if (!raw || typeof raw !== 'object') return profile;
+    const line = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+
+    profile.role = line(raw.role, 40);
+    profile.photoId = line(raw.photoId, 80);
+    profile.phone = line(raw.phone, 30);
+    profile.email = line(raw.email, 60);
+    profile.mbti = line(raw.mbti, 12);
+    profile.sns = line(raw.sns, 40);
+    profile.note = asText(raw.note);
+    profile.updatedAt = typeof raw.updatedAt === 'string' ? raw.updatedAt : '';
+
+    if (Array.isArray(raw.extras)) {
+      raw.extras.forEach((extra) => {
+        if (!extra || typeof extra !== 'object' || profile.extras.length >= MAX_EXTRAS) return;
+        const label = line(extra.label, 20);
+        const value = line(extra.value, 120);
+        if (!label && !value) return;
+        profile.extras.push({ id: typeof extra.id === 'string' && extra.id ? extra.id : createId(), label: label, value: value });
+      });
+    }
+    return profile;
+  }
+
+  const getProfile = (uid) => normalizeProfile(state.profiles[uid]);
+
+  // 참여자 이름은 달력의 members 를 기준으로 삼는다(이름을 바꿔도 한 곳만 보면 된다)
+  function displayName(uid, fallback) {
     const members = (state.calendar && state.calendar.members) || {};
-    const ids = Object.keys(members);
-    el.memberList.replaceChildren();
+    return cleanName(members[uid]) || cleanName(fallback) || uid;
+  }
 
-    const label = document.createElement('span');
-    label.textContent = '함께 쓰는 사람 ' + ids.length + '명';
-    el.memberList.appendChild(label);
+  // 사진이 없을 때 쓰는 이니셜 아바타(이름 해시로 색을 고정)
+  function paintAvatar(node, uid, name, photoId) {
+    const style = memoStyleFor(name || uid);
+    node.style.setProperty('--avatar-bg', style.bg);
+    node.style.setProperty('--avatar-ink', style.ink);
+    node.replaceChildren();
 
-    ids.sort((a, b) => {
-      if (a === state.session.userId) return -1;
-      if (b === state.session.userId) return 1;
+    if (photoId) {
+      const img = document.createElement('img');
+      img.alt = '';
+      resolveImageInto(img, { url: '', path: photoId });
+      node.appendChild(img);
+      return;
+    }
+    node.textContent = (name || uid).trim().slice(0, 1);
+  }
+
+  function renderProfiles() {
+    if (!state.calendar || !state.session) return;
+    const members = state.calendar.members || {};
+    const ids = Object.keys(members).sort((a, b) => {
+      if (a === myId()) return -1;
+      if (b === myId()) return 1;
       return String(members[a]).localeCompare(String(members[b]), 'ko');
-    }).forEach((uid) => {
-      const chip = document.createElement('span');
-      chip.className = 'member-chip' + (uid === state.session.userId ? ' is-me' : '');
-      chip.textContent = members[uid];
-      el.memberList.appendChild(chip);
+    });
+
+    el.teamLabel.textContent = '함께 쓰는 사람 ' + ids.length + '명';
+    el.profileStrip.replaceChildren();
+
+    ids.forEach((uid) => {
+      const name = displayName(uid);
+      const profile = getProfile(uid);
+      const mine = uid === myId();
+
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'profile-item' + (mine ? ' is-me' : '');
+      item.dataset.uid = uid;
+      item.setAttribute('aria-label',
+        name + '님 프로필 ' + (mine ? '수정하기' : '보기') +
+        (profile.role ? ', ' + profile.role : ', 역할 미입력'));
+
+      const avatar = document.createElement('span');
+      avatar.className = 'avatar';
+      avatar.setAttribute('aria-hidden', 'true');
+      paintAvatar(avatar, uid, name, profile.photoId);
+      item.appendChild(avatar);
+
+      const label = document.createElement('span');
+      label.className = 'profile-label';
+
+      const nameNode = document.createElement('p');
+      nameNode.className = 'profile-name';
+      nameNode.textContent = name;                 // XSS 방지
+      label.appendChild(nameNode);
+
+      const roleNode = document.createElement('p');
+      roleNode.className = 'profile-role' + (profile.role ? '' : ' is-empty');
+      roleNode.textContent = profile.role || '역할 미입력';
+      label.appendChild(roleNode);
+
+      if (mine) {
+        const tag = document.createElement('span');
+        tag.className = 'profile-me-tag';
+        tag.textContent = '내 프로필';
+        label.appendChild(tag);
+      }
+
+      item.appendChild(label);
+      el.profileStrip.appendChild(item);
     });
   }
+
+  function showProfileModal() {
+    el.profileBackdrop.hidden = false;
+    document.body.classList.add('is-locked');
+    el.app.setAttribute('aria-hidden', 'true');
+    el.profileSheet.focus();
+  }
+
+  function closeProfileModal() {
+    const uid = state.profileTarget;
+    el.profileBackdrop.hidden = true;
+    if (!state.boardKey) document.body.classList.remove('is-locked');
+    el.app.removeAttribute('aria-hidden');
+    state.profileTarget = '';
+    state.profileMode = null;
+    state.draftAvatar = null;
+    state.avatarCleared = false;
+    state.removedAvatarId = '';
+    state.draftExtras = [];
+
+    const back = el.profileStrip.querySelector('.profile-item[data-uid="' + cssEscape(uid) + '"]');
+    if (back) back.focus();
+  }
+
+  function openProfileView(uid) {
+    if (!uid) return;
+    const profile = getProfile(uid);
+    const name = displayName(uid);
+
+    state.profileTarget = uid;
+    state.profileMode = 'view';
+
+    el.profileTitle.textContent = name + '님의 프로필';
+    el.profileMeta.textContent = profile.updatedAt ? '마지막 수정 ' + formatUpdatedAt(profile.updatedAt) : '';
+    paintAvatar(el.profileHeroAvatar, uid, name, profile.photoId);
+    el.profileViewName.textContent = name;
+    el.profileViewRole.textContent = profile.role || '역할 미입력';
+
+    el.profileFields.replaceChildren();
+    const addRow = (label, value, link) => {
+      if (!value || !value.trim()) return;
+      const row = document.createElement('div');
+      row.className = 'view-row';
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      if (link) {
+        const anchor = document.createElement('a');
+        anchor.href = link + value.trim().replace(/\s+/g, '');
+        anchor.textContent = value.trim();
+        dd.appendChild(anchor);
+      } else {
+        dd.className = 'rich';
+        renderRichText(dd, value.trim());
+      }
+      row.appendChild(dt);
+      row.appendChild(dd);
+      el.profileFields.appendChild(row);
+    };
+
+    addRow('전화번호', profile.phone, 'tel:');
+    addRow('이메일', profile.email, 'mailto:');
+    addRow('MBTI', profile.mbti, '');
+    addRow('SNS 아이디', profile.sns, '');
+    addRow('기타', profile.note, '');
+    profile.extras.forEach((extra) => addRow(extra.label || '추가 항목', extra.value, ''));
+
+    if (!el.profileFields.children.length) {
+      const empty = document.createElement('p');
+      empty.className = 'profile-empty';
+      empty.textContent = '아직 등록한 정보가 없습니다.';
+      el.profileFields.appendChild(empty);
+    }
+
+    el.profileView.hidden = false;
+    el.profileEdit.hidden = true;
+    el.btnProfileEditStart.hidden = uid !== myId();     // 자기 프로필만 수정 가능
+    el.btnProfileSave.hidden = true;
+    el.btnProfileCancel.textContent = '닫기';
+
+    showProfileModal();
+  }
+
+  function renderExtras() {
+    el.extraList.replaceChildren();
+    state.draftExtras.forEach((extra) => {
+      const li = document.createElement('li');
+      li.className = 'extra-item';
+
+      const label = document.createElement('input');
+      label.type = 'text';
+      label.className = 'extra-label';
+      label.maxLength = 20;
+      label.placeholder = '항목 이름';
+      label.value = extra.label;
+      label.setAttribute('aria-label', '추가 항목 이름');
+      label.addEventListener('input', () => { extra.label = label.value; });
+
+      const value = document.createElement('input');
+      value.type = 'text';
+      value.className = 'extra-value';
+      value.maxLength = 120;
+      value.placeholder = '내용';
+      value.value = extra.value;
+      value.setAttribute('aria-label', '추가 항목 내용');
+      value.addEventListener('input', () => { extra.value = value.value; });
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'extra-del';
+      del.dataset.extraId = extra.id;
+      del.setAttribute('aria-label', '이 항목 빼기');
+      del.textContent = '✕';
+
+      li.appendChild(label);
+      li.appendChild(value);
+      li.appendChild(del);
+      el.extraList.appendChild(li);
+    });
+    el.btnAddExtra.disabled = state.draftExtras.length >= MAX_EXTRAS;
+  }
+
+  function openProfileEdit() {
+    const uid = myId();
+    const profile = getProfile(uid);
+    const name = displayName(uid);
+
+    state.profileTarget = uid;
+    state.profileMode = 'edit';
+    state.draftAvatar = null;
+    state.avatarCleared = false;
+    state.removedAvatarId = '';
+    state.draftExtras = profile.extras.map((e) => ({ id: e.id, label: e.label, value: e.value }));
+
+    el.profileTitle.textContent = '내 프로필';
+    el.profileMeta.textContent = '사진 · 이름 · 역할만 메인 화면에 보입니다.';
+    paintAvatar(el.avatarPreview, uid, name, profile.photoId);
+
+    el.pName.value = name;
+    el.pRole.value = profile.role;
+    el.pPhone.value = profile.phone;
+    el.pEmail.value = profile.email;
+    el.pMbti.value = profile.mbti;
+    el.pSns.value = profile.sns;
+    el.pNote.value = profile.note;
+    renderExtras();
+
+    el.profileView.hidden = true;
+    el.profileEdit.hidden = false;
+    el.btnProfileEditStart.hidden = true;
+    el.btnProfileSave.hidden = false;
+    el.btnProfileCancel.textContent = '취소';
+
+    if (el.profileBackdrop.hidden) showProfileModal();
+    else el.profileSheet.focus();
+  }
+
+  // 프로필 사진은 정사각형으로 잘라서 작게 저장한다
+  function cropSquare(file, side) {
+    return new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const source = Math.min(image.width, image.height);
+        const sx = (image.width - source) / 2;
+        const sy = (image.height - source) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = side;
+        canvas.height = side;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, side, side);
+        ctx.drawImage(image, sx, sy, source, source, 0, 0, side, side);
+        resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.75), w: side, h: side });
+      };
+      image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('사진을 읽지 못했습니다.')); };
+      image.src = objectUrl;
+    });
+  }
+
+  async function handlePickAvatar(files) {
+    const file = files && files[0];
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { showToast('이미지 파일만 넣을 수 있습니다.', 'error'); return; }
+    if (file.size > MAX_UPLOAD_BYTES) { showToast('5MB 이하 사진만 넣을 수 있습니다.', 'error'); return; }
+
+    try {
+      const cropped = await cropSquare(file, 400);
+      state.draftAvatar = cropped;
+      state.avatarCleared = false;
+      el.avatarPreview.replaceChildren();
+      const img = document.createElement('img');
+      img.src = cropped.dataUrl;
+      img.alt = '';
+      el.avatarPreview.appendChild(img);
+    } catch (err) {
+      console.warn('사진 처리 실패', err);
+      showToast(friendlyError(err), 'error');
+    }
+  }
+
+  function handleClearAvatar() {
+    state.draftAvatar = null;
+    state.avatarCleared = true;
+    paintAvatar(el.avatarPreview, myId(), el.pName.value || displayName(myId()), '');
+  }
+
+  async function handleSaveProfile() {
+    if (state.busy || state.profileMode !== 'edit') return;
+    const uid = myId();
+    const current = getProfile(uid);
+    const nextName = cleanName(el.pName.value);
+
+    if (!nextName) { showToast('이름을 입력해 주세요.', 'error'); el.pName.focus(); return; }
+
+    // 같은 달력 안에서 이름이 겹치면 막는다
+    const members = (state.calendar && state.calendar.members) || {};
+    const taken = Object.keys(members).some((id) => id !== uid && members[id] === nextName);
+    if (taken) { showToast("'" + nextName + "' 이름을 쓰는 사람이 이미 있습니다.", 'error'); el.pName.focus(); return; }
+
+    const profile = emptyProfile();
+    profile.role = el.pRole.value.trim().slice(0, 40);
+    profile.phone = el.pPhone.value.trim().slice(0, 30);
+    profile.email = el.pEmail.value.trim().slice(0, 60);
+    profile.mbti = el.pMbti.value.trim().slice(0, 12);
+    profile.sns = el.pSns.value.trim().slice(0, 40);
+    profile.note = el.pNote.value.trim().slice(0, MAX_TEXT_LEN);
+    profile.extras = state.draftExtras
+      .map((e) => ({ id: e.id, label: e.label.trim().slice(0, 20), value: e.value.trim().slice(0, 120) }))
+      .filter((e) => e.label || e.value);
+    profile.photoId = current.photoId;
+    profile.updatedAt = new Date().toISOString();
+
+    setBusy(true);
+    el.btnProfileSave.disabled = true;
+    try {
+      // 사진 처리: 새로 고르면 저장하고 옛 사진은 지운다
+      if (state.draftAvatar) {
+        const imageId = createId();
+        const result = await state.store.uploadImage(
+          state.calendar.id, 'profile', uid, imageId, state.draftAvatar.dataUrl,
+          { w: state.draftAvatar.w, h: state.draftAvatar.h });
+        imageCache.set(result.path, state.draftAvatar.dataUrl);
+        profile.photoId = result.path;
+        if (current.photoId && current.photoId !== result.path) state.removedAvatarId = current.photoId;
+      } else if (state.avatarCleared) {
+        profile.photoId = '';
+        if (current.photoId) state.removedAvatarId = current.photoId;
+      }
+
+      await state.store.setProfile(state.calendar.id, uid, profile);
+
+      // 이름이 바뀌면 계정과 참여자 목록도 함께 고친다
+      if (nextName !== displayName(uid)) {
+        await state.store.updateUser(uid, { nickname: nextName });
+        await state.store.addMember(state.calendar.id, uid, nextName);
+        saveSession({ userId: uid, nickname: nextName, calendarId: state.calendar.id });
+        el.whoName.textContent = nextName;
+        if (state.calendar.members) state.calendar.members[uid] = nextName;
+      }
+
+      if (state.removedAvatarId) {
+        await state.store.deleteImage(state.calendar.id, state.removedAvatarId);
+        state.removedAvatarId = '';
+      }
+
+      state.profiles[uid] = profile;
+      renderProfiles();
+      showToast('프로필을 저장했습니다.');
+      openProfileView(uid);
+    } catch (err) {
+      console.warn('프로필 저장 실패', err);
+      const denied = /permission|insufficient/i.test(String((err && err.code) || (err && err.message) || ''));
+      showToast(denied
+        ? '프로필 저장 권한이 없습니다. Firestore 규칙에 profiles 컬렉션 허용을 추가해 주세요.'
+        : friendlyError(err), 'error');
+    } finally {
+      el.btnProfileSave.disabled = false;
+      setBusy(false);
+    }
+  }
+
 
   /* =======================================================
      메모 조회
@@ -2616,7 +3251,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     };
     ids.forEach((memoId) => {
       const memo = normalizeMemo(memos[memoId], memoId);
-      const nickname = memo.nickname || memo.authorId;
+      const nickname = displayName(memo.authorId, memo.nickname);
       if (authors.indexOf(memo.authorId) < 0) {
         authors.push(memo.authorId);
         info.nicknames.push(nickname);
@@ -3030,7 +3665,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
   function buildMemoCard(key, memoId) {
     const memo = getMemo(key, memoId);
-    const nickname = memo.nickname || memo.authorId;
+    const nickname = displayName(memo.authorId, memo.nickname);   // 이름은 참여자 목록 기준
     const style = memoStyleFor(nickname);          // 색은 닉네임 기준
     const tilt = memoStyleFor(memoId).tilt;        // 기울기는 메모마다 다르게
     const blocked = memo.type === 'scrum' && hasBlocker(memo.blockers);
@@ -3748,7 +4383,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (!key || !hasMemo(key, memoId)) return;
 
     const memo = getMemo(key, memoId);
-    const nickname = memo.nickname || memo.authorId;
+    const nickname = displayName(memo.authorId, memo.nickname);
     const mine = isMine(memo);
 
     state.modalMode = 'view';
@@ -4275,7 +4910,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       const memos = days[key].memos || {};
       Object.keys(memos).forEach((memoId) => {
         const memo = normalizeMemo(memos[memoId], memoId);
-        const nickname = memo.nickname || memo.authorId;
+        const nickname = displayName(memo.authorId, memo.nickname);
         const haystack = [
           nickname, memo.yesterday, memo.today, memo.blockers,
           memo.events.map((ev) => ev.title).join(' '),
@@ -4685,6 +5320,56 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     });
 
     // 게시판
+    // 팀원 프로필
+    el.profileStrip.addEventListener('click', (event) => {
+      const item = event.target.closest('.profile-item');
+      if (!item) return;
+      const uid = item.dataset.uid;
+      if (uid === myId()) openProfileEdit();     // 내 프로필은 바로 편집
+      else openProfileView(uid);
+    });
+    el.btnProfileClose.addEventListener('click', closeProfileModal);
+    el.btnProfileCancel.addEventListener('click', () => {
+      // 편집 중이었고 이미 저장된 프로필이 있으면 보기로 되돌린다
+      if (state.profileMode === 'edit' && state.profiles[myId()]) openProfileView(myId());
+      else closeProfileModal();
+    });
+    el.btnProfileEditStart.addEventListener('click', () => {
+      if (state.profileTarget === myId()) openProfileEdit();
+    });
+    el.btnProfileSave.addEventListener('click', handleSaveProfile);
+    el.btnPickAvatar.addEventListener('click', () => el.fileAvatar.click());
+    el.fileAvatar.addEventListener('change', (event) => {
+      handlePickAvatar(event.target.files);
+      event.target.value = '';
+    });
+    el.btnClearAvatar.addEventListener('click', handleClearAvatar);
+    el.pNote.addEventListener('keydown', handleListKeydown);
+    el.btnAddExtra.addEventListener('click', () => {
+      if (state.draftExtras.length >= MAX_EXTRAS) return;
+      state.draftExtras.push({ id: createId(), label: '', value: '' });
+      renderExtras();
+      const inputs = el.extraList.querySelectorAll('.extra-label');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    });
+    el.extraList.addEventListener('click', (event) => {
+      const button = event.target.closest('.extra-del');
+      if (!button) return;
+      state.draftExtras = state.draftExtras.filter((e) => e.id !== button.dataset.extraId);
+      renderExtras();
+    });
+    el.profileBackdrop.addEventListener('mousedown', (event) => {
+      state.profileDown = event.target === el.profileBackdrop;
+    });
+    el.profileBackdrop.addEventListener('click', (event) => {
+      if (event.target === el.profileBackdrop && state.profileDown) closeProfileModal();
+      state.profileDown = false;
+    });
+    el.profileBackdrop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeProfileModal(); }
+      else if (event.key === 'Tab') trapTab(el.profileSheet, event);
+    });
+
     // 팀 그라운드 룰
     el.btnEditGround.addEventListener('click', openGroundEdit);
     el.btnGroundCancel.addEventListener('click', closeGroundEdit);
@@ -4874,7 +5559,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       'loginForm', 'loginId', 'loginPw', 'btnLogin', 'btnGoSignup',
       'signupForm', 'signupId', 'signupPw', 'signupNick', 'btnSignup', 'btnGoLogin',
       'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'whoName', 'btnLogout',
-      'memberList', 'inviteBox', 'inviteInput', 'btnInviteClose',
+      'teamLabel', 'profileStrip', 'inviteBox', 'inviteInput', 'btnInviteClose',
+      'profileBackdrop', 'profileSheet', 'profileTitle', 'profileMeta', 'btnProfileClose',
+      'profileView', 'profileHeroAvatar', 'profileViewName', 'profileViewRole', 'profileFields',
+      'profileEdit', 'avatarPreview', 'btnPickAvatar', 'btnClearAvatar', 'fileAvatar',
+      'pName', 'pRole', 'pPhone', 'pEmail', 'pMbti', 'pSns', 'pNote',
+      'extraList', 'btnAddExtra', 'btnProfileCancel', 'btnProfileEditStart', 'btnProfileSave',
       'ground', 'groundMeta', 'btnEditGround', 'groundView', 'groundBody', 'btnGroundMore',
       'groundEdit', 'fGround', 'btnGroundCancel', 'btnGroundSave',
       'calTitle', 'calSummary', 'btnPrev', 'btnNext', 'btnToday', 'grid',
