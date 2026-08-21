@@ -339,6 +339,33 @@ input[type="password"]:focus {
   padding: 18px;
   box-shadow: var(--shadow);
 }
+
+/* 팀 그라운드 룰 */
+.ground {
+  background: var(--amber-soft);
+  border: 1px solid var(--amber-line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ground-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ground-heading { min-width: 0; }
+.ground-title { margin: 0; font-size: 14px; font-weight: 800; color: var(--amber-ink); }
+.ground-meta { margin: 2px 0 0; font-size: 11.5px; color: #a1741f; }
+.ground-body {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #6b4f00;
+  word-break: break-word;
+}
+.ground-body.is-empty { color: #a1741f; }
+.ground-body.is-clamped { max-height: 5.6em; overflow: hidden; }
+.ground-edit { display: flex; flex-direction: column; gap: 8px; }
+.ground-edit textarea { background: #fff; }
+.ground-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .cal-head {
   display: flex;
   align-items: center;
@@ -492,6 +519,49 @@ input[type="password"]:focus {
 .board-date { margin: 0; font-size: 19px; letter-spacing: -0.3px; }
 .board-count { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
 
+.board-tools { display: flex; align-items: center; gap: 10px; flex: none; }
+
+/* 휴지통: 드래그로 메모를 끌어다 놓는 곳 */
+.trash {
+  appearance: none;
+  width: 46px; height: 46px;
+  display: grid; place-items: center;
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.trash:hover { opacity: 0.85; }
+.trash.is-armed { opacity: 1; border-color: var(--blue); }        /* 드래그 중 */
+.trash.is-over {
+  opacity: 1;
+  transform: scale(1.16);
+  background: var(--red-soft);
+  border-color: var(--red);
+  border-style: solid;
+}
+.trash.is-blocked {
+  opacity: 1;
+  transform: scale(1.08);
+  background: #f3f4f6;
+  border-color: var(--line-strong);
+  cursor: not-allowed;
+}
+.trash.is-blocked .trash-icon { filter: grayscale(1); }
+.trash.is-blocked::after {
+  content: '✕';
+  position: absolute;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--red-dark);
+}
+.trash { position: relative; }
+.memo.is-trashing { opacity: 0.65; }
+
 .fab {
   appearance: none;
   flex: none;
@@ -535,8 +605,8 @@ input[type="password"]:focus {
 /* 자유 배치 캔버스(넓은 화면) */
 .memo-grid.is-canvas { position: relative; }
 .memo-grid.is-canvas .memo { position: absolute; width: 240px; margin: 0; }
-.memo-grid.is-canvas .memo.is-mine { touch-action: none; }
-.memo-grid.is-canvas .memo.is-mine .memo-hit { cursor: grab; }
+.memo-grid.is-canvas .memo { touch-action: none; }
+.memo-grid.is-canvas .memo .memo-hit { cursor: grab; }
 .memo.is-dragging {
   z-index: 20;
   transition: none;
@@ -1003,6 +1073,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
   .board-head { padding: 12px 14px; }
   .board-date { font-size: 17px; }
+  .trash { display: none; }          /* 목록 모드에서는 드래그가 없어 숨긴다 */
   .board-surface { padding: 22px 14px 48px; }
   .memo-grid.is-list { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 16px; }
 
@@ -1124,6 +1195,33 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     <button type="button" class="btn" id="btnInviteClose">닫기</button>
   </div>
 
+  <!-- 팀 그라운드 룰 -->
+  <section class="ground" id="ground" aria-labelledby="groundTitle">
+    <div class="ground-head">
+      <div class="ground-heading">
+        <h2 class="ground-title" id="groundTitle">팀 그라운드 룰</h2>
+        <p class="ground-meta" id="groundMeta"></p>
+      </div>
+      <button type="button" class="btn" id="btnEditGround">설정</button>
+    </div>
+
+    <div class="ground-view" id="groundView">
+      <div class="ground-body rich" id="groundBody"></div>
+      <button type="button" class="mini-btn" id="btnGroundMore" hidden>더 보기</button>
+    </div>
+
+    <div class="ground-edit" id="groundEdit" hidden>
+      <label class="sr-only" for="fGround">팀 그라운드 룰 내용</label>
+      <textarea id="fGround" rows="5"
+                placeholder="예)&#10;- 데일리 스크럼은 매일 오전 10시&#10;- 막힌 건 30분 안에 공유하기"></textarea>
+      <p class="hint">- 로 시작하면 목록이 됩니다. 같은 달력을 쓰는 사람 모두에게 보입니다.</p>
+      <div class="ground-actions">
+        <button type="button" class="btn" id="btnGroundCancel">취소</button>
+        <button type="button" class="btn primary" id="btnGroundSave">저장</button>
+      </div>
+    </div>
+  </section>
+
   <main class="card">
     <div class="cal-head">
       <div aria-live="polite">
@@ -1170,7 +1268,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         <p class="board-count" id="boardCount"></p>
       </div>
     </div>
-    <button type="button" class="fab" id="btnAddMemo" aria-label="내 메모 작성">+</button>
+    <div class="board-tools">
+      <button type="button" class="trash" id="btnTrash" aria-label="메모 휴지통">
+        <span class="trash-icon" aria-hidden="true">🗑</span>
+      </button>
+      <button type="button" class="fab" id="btnAddMemo" aria-label="내 메모 작성">+</button>
+    </div>
   </header>
 
   <div class="board-surface" id="boardSurface">
@@ -1324,7 +1427,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
              allow update: if request.auth != null;
            }
            match /calendars/{calId} {
-             allow read, create, update: if request.auth != null;
+             allow read, create: if request.auth != null;
+             // 참여자 추가와 팀 그라운드 룰 수정만 허용한다
+             allow update: if request.auth != null
+               && request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['members', 'groundRules', 'groundRulesBy', 'groundRulesAt']);
              match /days/{dayId} {
                allow read, write: if request.auth != null;
              }
@@ -1766,6 +1873,13 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         writeDb(db);
         notifyCalendars();
       },
+      async setGroundRules(calId, patch) {
+        const db = readDb();
+        if (!db.calendars[calId]) throw new Error('달력을 찾을 수 없습니다.');
+        Object.assign(db.calendars[calId], patch);
+        writeDb(db);
+        notifyCalendars();
+      },
       subscribeCalendar(calId, cb) {
         const listener = { calId: calId, cb: cb };
         calListeners.add(listener);
@@ -1922,6 +2036,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         patch['members.' + uid] = nickname;
         await updateDoc(doc(db, 'calendars', calId), patch);
       },
+      async setGroundRules(calId, patch) {
+        await updateDoc(doc(db, 'calendars', calId), patch);
+      },
       // 참여자 목록이 실시간으로 갱신되도록 달력 문서도 구독한다
       subscribeCalendar(calId, cb) {
         return onSnapshot(doc(db, 'calendars', calId), (snap) => {
@@ -2052,7 +2169,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       subscribeCalendar: store.subscribeCalendar.bind(store)
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
-     'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
+     'setGroundRules', 'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
      'uploadImage', 'loadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
       guarded[key] = function () {
         const args = Array.prototype.slice.call(arguments);
@@ -2316,6 +2433,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       state.calendar = fresh;
       el.calendarName.textContent = fresh.name || '팀 달력';
       renderMembers();
+      if (el.groundEdit.hidden) renderGroundRules();   // 편집 중이면 건드리지 않는다
     });
 
     el.gate.hidden = true;
@@ -2325,6 +2443,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     el.whoName.textContent = session.nickname;
     el.calendarName.textContent = calendar.name || '팀 달력';
     renderMembers();
+    renderGroundRules();
 
     const today = startOfToday();
     state.viewYear = today.getFullYear();
@@ -2356,6 +2475,86 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     } catch (err) {
       console.warn('구독 실패', err);
       showToast(friendlyError(err), 'error');
+    }
+  }
+
+  /* =======================================================
+     팀 그라운드 룰
+     ======================================================= */
+  function renderGroundRules() {
+    const cal = state.calendar || {};
+    const text = typeof cal.groundRules === 'string' ? cal.groundRules.trim() : '';
+
+    if (text) {
+      el.groundBody.classList.remove('is-empty');
+      renderRichText(el.groundBody, text);
+      el.btnEditGround.textContent = '수정';
+      el.groundMeta.textContent = cal.groundRulesBy
+        ? cleanName(cal.groundRulesBy) + ' · ' +
+          (cal.groundRulesAt ? formatUpdatedAt(cal.groundRulesAt) : '')
+        : '';
+    } else {
+      el.groundBody.classList.add('is-empty');
+      el.groundBody.replaceChildren(
+        document.createTextNode('아직 정해진 그라운드 룰이 없습니다. 팀에서 지킬 약속을 적어보세요.'));
+      el.btnEditGround.textContent = '설정';
+      el.groundMeta.textContent = '';
+    }
+
+    // 길면 접어 두고 '더 보기' 로 펼친다
+    el.groundBody.classList.add('is-clamped');
+    el.btnGroundMore.hidden = true;
+    window.requestAnimationFrame(() => {
+      const overflow = el.groundBody.scrollHeight > el.groundBody.clientHeight + 2;
+      el.btnGroundMore.hidden = !overflow;
+      if (!overflow) el.groundBody.classList.remove('is-clamped');
+      else el.btnGroundMore.textContent = '더 보기';
+    });
+  }
+
+  function openGroundEdit() {
+    el.fGround.value = (state.calendar && state.calendar.groundRules) || '';
+    el.groundView.hidden = true;
+    el.groundEdit.hidden = false;
+    el.btnEditGround.hidden = true;
+    el.fGround.focus();
+  }
+
+  function closeGroundEdit() {
+    el.groundEdit.hidden = true;
+    el.groundView.hidden = false;
+    el.btnEditGround.hidden = false;
+    el.btnEditGround.focus();
+  }
+
+  async function handleSaveGroundRules() {
+    if (!state.calendar || state.busy) return;
+    const text = el.fGround.value.trim().slice(0, MAX_TEXT_LEN);
+
+    setBusy(true);
+    el.btnGroundSave.disabled = true;
+    try {
+      await state.store.setGroundRules(state.calendar.id, {
+        groundRules: text,
+        groundRulesBy: state.session.nickname,
+        groundRulesAt: new Date().toISOString()
+      });
+      // 구독이 늦게 반영될 수 있어 화면을 먼저 갱신한다
+      state.calendar.groundRules = text;
+      state.calendar.groundRulesBy = state.session.nickname;
+      state.calendar.groundRulesAt = new Date().toISOString();
+      renderGroundRules();
+      closeGroundEdit();
+      showToast(text ? '그라운드 룰을 저장했습니다.' : '그라운드 룰을 비웠습니다.');
+    } catch (err) {
+      console.warn('그라운드 룰 저장 실패', err);
+      const denied = /permission|insufficient/i.test(String((err && err.code) || (err && err.message) || ''));
+      showToast(denied
+        ? '저장 권한이 없습니다. Firestore 규칙에 groundRules 필드 허용을 추가해 주세요.'
+        : friendlyError(err), 'error');
+    } finally {
+      el.btnGroundSave.disabled = false;
+      setBusy(false);
     }
   }
 
@@ -2867,7 +3066,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       nickname + '님의 ' + (memo.type === 'free' ? '자유 메모' : '스크럼 메모') + ' 열기' +
       (blocked ? ', 막힌 점 있음' : '') +
       (memo.comments.length ? ', 댓글 ' + memo.comments.length + '개' : '') +
-      (mine ? ', Shift와 화살표 키로 위치 이동 가능' : ''));
+      ', Shift와 화살표 키로 위치 이동 가능');
     item.appendChild(hit);
 
     const head = document.createElement('div');
@@ -3107,10 +3306,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (!isCanvasMode() || event.button !== 0 || state.drag) return;
     const card = event.target.closest ? event.target.closest('.memo') : null;
     if (!card) return;
+    // 위치는 누구나 옮길 수 있다(내용 수정·삭제는 여전히 본인만)
     const memo = getMemo(state.boardKey, card.dataset.memoId);
-    if (!isMine(memo)) return;             // 남의 메모는 잡아도 움직이지 않는다
 
     state.drag = {
+      canTrash: isMine(memo),              // 휴지통에 버릴 수 있는지
       memoId: card.dataset.memoId,
       card: card,
       originX: Number(card.dataset.x || 0),
@@ -3133,12 +3333,73 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (!drag.moved) {
       drag.moved = true;
       drag.card.classList.add('is-dragging');
+      el.btnTrash.classList.add('is-armed');
     }
     drag.currentX = clamp(drag.originX + dx, 0, CANVAS_W - MEMO_W);
     drag.currentY = Math.max(0, drag.originY + dy);
     drag.card.style.left = drag.currentX + 'px';
     drag.card.style.top = drag.currentY + 'px';
+
+    // 휴지통 위에 올라왔는지 판정
+    const over = isOverTrash(event.clientX, event.clientY);
+    if (over !== drag.overTrash) {
+      drag.overTrash = over;
+      el.btnTrash.classList.toggle('is-over', over && drag.canTrash);
+      el.btnTrash.classList.toggle('is-blocked', over && !drag.canTrash);
+      drag.card.classList.toggle('is-trashing', over);
+    }
     event.preventDefault();
+  }
+
+  // 포인터가 휴지통 영역 안에 있는지
+  function isOverTrash(x, y) {
+    if (el.btnTrash.hidden || !el.btnTrash.offsetParent) return false;
+    const rect = el.btnTrash.getBoundingClientRect();
+    const pad = 8;
+    return x >= rect.left - pad && x <= rect.right + pad &&
+      y >= rect.top - pad && y <= rect.bottom + pad;
+  }
+
+  function clearTrashState(card) {
+    el.btnTrash.classList.remove('is-armed', 'is-over', 'is-blocked');
+    if (card) card.classList.remove('is-trashing');
+  }
+
+  // 휴지통에 놓았을 때. 위치를 저장하지 않았으므로 다시 그리면 원래 자리로 돌아간다.
+  async function handleTrashDrop(memoId, canTrash) {
+    const key = state.boardKey;
+    if (!key || !hasMemo(key, memoId)) { renderBoard(); return; }
+
+    if (!canTrash) {
+      showToast('남이 쓴 메모는 삭제할 수 없습니다.', 'error');
+      renderBoard();
+      return;
+    }
+    if (!window.confirm('이 메모를 삭제할까요?\n\n삭제하면 되돌릴 수 없습니다.')) {
+      renderBoard();
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await removeMemo(key, memoId);
+      showToast('메모를 삭제했습니다.');
+    } catch (err) {
+      console.warn('삭제 실패', err);
+      showToast(friendlyError(err), 'error');
+      renderBoard();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // 메모와 딸린 사진을 함께 지운다
+  async function removeMemo(key, memoId) {
+    const memo = getMemo(key, memoId);
+    await state.store.deleteMemo(state.calendar.id, key, memoId);
+    for (const img of memo.images) {
+      if (img.path) await state.store.deleteImage(state.calendar.id, img.path);
+    }
   }
 
   async function handleBoardPointerUp(event) {
@@ -3148,6 +3409,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     try { drag.card.releasePointerCapture(event.pointerId); } catch (err) { /* 무시 */ }
 
     if (!drag.moved) {
+      clearTrashState(drag.card);
       if (state.boardDirty) { state.boardDirty = false; renderBoard(); }
       return;
     }
@@ -3155,6 +3417,14 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     drag.card.classList.remove('is-dragging');
     state.suppressClick = true;            // 드래그 직후의 클릭(메모 열기)을 막는다
     window.setTimeout(() => { state.suppressClick = false; }, 0);
+
+    // 휴지통 위에서 놓았다면 삭제 절차로 넘어간다
+    if (drag.overTrash) {
+      clearTrashState(drag.card);
+      await handleTrashDrop(drag.memoId, drag.canTrash);
+      return;
+    }
+    clearTrashState(drag.card);
 
     // 가장 가까운 구멍에 스냅
     const x = snap(clamp(drag.currentX === undefined ? drag.originX : drag.currentX, 0, CANVAS_W - MEMO_W));
@@ -3184,9 +3454,6 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     else return;
 
     const memoId = hit.dataset.memoId;
-    const memo = getMemo(state.boardKey, memoId);
-    if (!isMine(memo)) return;
-
     const card = hit.closest('.memo');
     event.preventDefault();
     const x = snap(clamp(Number(card.dataset.x || 0) + dx, 0, CANVAS_W - MEMO_W));
@@ -3793,10 +4060,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
     setBusy(true);
     try {
-      await state.store.deleteMemo(state.calendar.id, key, memoId);
-      for (const img of memo.images) {
-        if (img.path) await state.store.deleteImage(state.calendar.id, img.path);
-      }
+      await removeMemo(key, memoId);
       state.modalReturn = { type: 'add' };
       closeModal(true);
       showToast('메모를 삭제했습니다.');
@@ -4421,6 +4685,21 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     });
 
     // 게시판
+    // 팀 그라운드 룰
+    el.btnEditGround.addEventListener('click', openGroundEdit);
+    el.btnGroundCancel.addEventListener('click', closeGroundEdit);
+    el.btnGroundSave.addEventListener('click', handleSaveGroundRules);
+    el.fGround.addEventListener('keydown', handleListKeydown);
+    el.btnGroundMore.addEventListener('click', () => {
+      const clamped = el.groundBody.classList.toggle('is-clamped');
+      el.btnGroundMore.textContent = clamped ? '더 보기' : '접기';
+    });
+
+    // 휴지통(끌어다 놓아 삭제)
+    el.btnTrash.addEventListener('click', () => {
+      showToast('메모를 끌어다 놓으면 삭제됩니다. 내가 쓴 메모만 버릴 수 있어요.');
+    });
+
     el.btnBack.addEventListener('click', closeBoard);
     el.btnAddMemo.addEventListener('click', () => {
       state.pendingPos = null;                 // 빈 자리를 자동으로 찾는다
@@ -4432,8 +4711,15 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     // 메모 열기 / 빈 곳 클릭해 붙이기
     el.memoGrid.addEventListener('click', (event) => {
       if (state.suppressClick) { event.stopPropagation(); return; }
+
+      // 포인터 캡처가 걸린 뒤에는 click 의 target 이 .memo 로 바뀌므로
+      // .memo-hit 을 못 찾으면 .memo 로도 찾아서 연다.
       const hit = event.target.closest('.memo-hit');
       if (hit) { openMemoView(hit.dataset.memoId); return; }
+
+      const card = event.target.closest('.memo');
+      if (card) { openMemoView(card.dataset.memoId); return; }
+
       handleCanvasClick(event);
     });
 
@@ -4589,9 +4875,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       'signupForm', 'signupId', 'signupPw', 'signupNick', 'btnSignup', 'btnGoLogin',
       'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'whoName', 'btnLogout',
       'memberList', 'inviteBox', 'inviteInput', 'btnInviteClose',
+      'ground', 'groundMeta', 'btnEditGround', 'groundView', 'groundBody', 'btnGroundMore',
+      'groundEdit', 'fGround', 'btnGroundCancel', 'btnGroundSave',
       'calTitle', 'calSummary', 'btnPrev', 'btnNext', 'btnToday', 'grid',
       'pageFoot', 'btnExport', 'btnImport', 'fileImport',
-      'board', 'btnBack', 'boardDate', 'boardCount', 'btnAddMemo', 'boardSurface',
+      'board', 'btnBack', 'boardDate', 'boardCount', 'btnTrash', 'btnAddMemo', 'boardSurface',
       'memoGrid', 'boardEmpty',
       'backdrop', 'sheet', 'sheetTitle', 'sheetMeta', 'btnClose', 'viewPane', 'viewBody',
       'viewImages', 'commentTitle', 'commentCount', 'commentList', 'fComment', 'btnAddComment',
