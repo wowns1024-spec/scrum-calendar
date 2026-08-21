@@ -460,7 +460,121 @@ input[type="password"]:focus {
 }
 .cal-title { margin: 0; font-size: 22px; letter-spacing: -0.3px; }
 .cal-summary { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
-.nav { display: flex; align-items: center; gap: 6px; }
+.nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.btn-quick { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; }
+
+/* =========================================================
+   빠른 일정 줄
+   ========================================================= */
+.row { position: relative; }          /* 일정 줄 레이어의 기준 */
+
+.bar-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  pointer-events: none;               /* 줄만 클릭을 받는다 */
+  z-index: 2;
+}
+.sbar {
+  grid-row: 1;
+  align-self: start;
+  pointer-events: auto;
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  height: 18px;
+  line-height: 1;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--sbar-bg, #dbeafe);
+  color: var(--sbar-ink, #1e40af);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: default;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+}
+.sbar.is-mine { cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--sbar-ink, #1e40af); }
+.sbar.is-mine:hover { filter: brightness(0.97); }
+.sbar-text { overflow: hidden; text-overflow: ellipsis; }
+.sbar-cont { flex: none; font-weight: 800; opacity: 0.75; }
+/* 다음 주로 이어지는 쪽은 각지게 */
+.sbar.cont-left { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
+.sbar.cont-right { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
+
+.sbar-more {
+  grid-row: 1;
+  grid-column: 7;
+  align-self: start;
+  justify-self: end;
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  padding-right: 6px;
+}
+
+/* 줄이 들어간 주는 칸 안에 그만큼 자리를 비워 둔다 */
+.lane-space { flex: none; }
+
+.sbar-tip {
+  position: fixed;
+  z-index: 95;
+  max-width: min(280px, 86vw);
+  background: #111827;
+  color: #fff;
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.28);
+}
+.sbar-tip .tip-title { font-weight: 800; }
+.sbar-tip .tip-sub { color: #cbd5e1; font-size: 11.5px; margin-top: 2px; }
+
+/* 등록 창 */
+.sheet-sm { width: min(420px, 100%); }
+.field-label { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.date-range { display: flex; align-items: center; gap: 8px; }
+.date-range input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 9px 10px;
+}
+.date-range input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px #dbeafe; }
+.date-sep { color: var(--muted); font-weight: 700; }
+
+.color-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.color-dot {
+  appearance: none;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--dot);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+}
+.color-dot[aria-checked="true"] { border-color: var(--text); }
+.color-dot .check { visibility: hidden; }
+.color-dot[aria-checked="true"] .check { visibility: visible; }
 .nav-btn { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; font-size: 18px; line-height: 1; }
 
 .grid {
@@ -1151,6 +1265,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   .chip { font-size: 10px; padding: 1px 4px; }
   .wd { font-size: 12px; padding: 8px 2px; }
   .legend { font-size: 11px; }
+  .quick-label { display: none; }        /* 좁은 화면에서는 아이콘만 */
+  .btn-quick { padding: 8px 11px; }
+  .sbar { height: 15px; font-size: 9.5px; padding: 0 5px; border-radius: 8px; }
   .topbar { gap: 10px; }
   .topbar-actions { width: 100%; justify-content: flex-start; }
   .page-foot { padding: 0 12px 26px; }
@@ -1317,6 +1434,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         <p class="cal-summary" id="calSummary">&nbsp;</p>
       </div>
       <div class="nav">
+        <button type="button" class="btn btn-quick" id="btnQuickSchedule" aria-label="빠른 일정 등록">
+          <span aria-hidden="true">＋</span><span class="quick-label">빠른 일정 등록</span>
+        </button>
         <button type="button" class="btn nav-btn" id="btnPrev" aria-label="이전 달 보기">&#8249;</button>
         <button type="button" class="btn" id="btnToday">오늘</button>
         <button type="button" class="btn nav-btn" id="btnNext" aria-label="다음 달 보기">&#8250;</button>
@@ -1469,6 +1589,55 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     </footer>
   </div>
 </div>
+
+<!-- =========================================================
+     빠른 일정 등록
+     ========================================================= -->
+<div class="backdrop" id="scheduleBackdrop" hidden>
+  <div class="sheet sheet-sm" id="scheduleSheet" role="dialog" aria-modal="true"
+       aria-labelledby="scheduleTitle" tabindex="-1">
+    <header class="sheet-head">
+      <div>
+        <h2 class="sheet-title" id="scheduleTitle">빠른 일정 등록</h2>
+        <p class="sheet-meta" id="scheduleMeta"></p>
+      </div>
+      <button type="button" class="icon-btn" id="btnScheduleClose" aria-label="닫기">&#10005;</button>
+    </header>
+
+    <div class="sheet-body">
+      <div class="field">
+        <label for="sTitle">일정</label>
+        <input type="text" id="sTitle" maxlength="60" placeholder="예) 기획 발표 준비" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <span class="field-label">기간</span>
+        <div class="date-range">
+          <label class="sr-only" for="sStart">시작일</label>
+          <input type="date" id="sStart" />
+          <span class="date-sep" aria-hidden="true">~</span>
+          <label class="sr-only" for="sEnd">종료일</label>
+          <input type="date" id="sEnd" />
+        </div>
+        <p class="hint" id="scheduleSpan"></p>
+      </div>
+
+      <fieldset class="field">
+        <legend>색깔</legend>
+        <div class="color-picker" id="colorPicker" role="radiogroup" aria-label="일정 색깔"></div>
+      </fieldset>
+    </div>
+
+    <footer class="sheet-foot">
+      <button type="button" class="btn danger" id="btnScheduleDelete">일정 삭제</button>
+      <span class="foot-spacer"></span>
+      <button type="button" class="btn" id="btnScheduleCancel">취소</button>
+      <button type="button" class="btn primary" id="btnScheduleSave">저장</button>
+    </footer>
+  </div>
+</div>
+
+<div class="sbar-tip" id="scheduleTip" role="tooltip" hidden></div>
 
 <!-- =========================================================
      팀원 프로필 (보기 / 편집)
@@ -1625,6 +1794,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
                allow read, write: if request.auth != null;
              }
              // 자유 메모의 사진. Storage(유료 플랜) 대신 Firestore 문서에 담는다.
+             match /schedules/{scheduleId} { // 빠른 일정(기간 줄)
+               allow read: if request.auth != null;
+               allow write: if request.auth != null;
+             }
              match /profiles/{userId} {      // 팀원 프로필(사진은 images 문서를 참조)
                allow read: if request.auth != null;
                allow write: if request.auth != null;
@@ -1713,6 +1886,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     unsubscribe: null,
     unsubscribeCalendar: null,
     unsubscribeProfiles: null,
+    unsubscribeSchedules: null,
+    schedules: {},          // { 일정ID: 일정 }
+    scheduleTarget: '',     // 수정 중인 일정 ID('' = 새 일정)
+    scheduleColor: 'blue',
     profiles: {},           // { 아이디: 프로필 }
     profileTarget: '',      // 프로필 모달에서 보고 있는 사람
     profileMode: null,      // 'view' | 'edit'
@@ -1983,6 +2160,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     const listeners = new Set();
     const calListeners = new Set();
     const profileListeners = new Set();
+    const scheduleListeners = new Set();
 
     function readDb() {
       try {
@@ -1994,10 +2172,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
           calendars: parsed.calendars && typeof parsed.calendars === 'object' ? parsed.calendars : {},
           days: parsed.days && typeof parsed.days === 'object' ? parsed.days : {},
           images: parsed.images && typeof parsed.images === 'object' ? parsed.images : {},
-          profiles: parsed.profiles && typeof parsed.profiles === 'object' ? parsed.profiles : {}
+          profiles: parsed.profiles && typeof parsed.profiles === 'object' ? parsed.profiles : {},
+          schedules: parsed.schedules && typeof parsed.schedules === 'object' ? parsed.schedules : {}
         };
       } catch (err) {
-        return { users: {}, calendars: {}, days: {}, images: {}, profiles: {} };
+        return { users: {}, calendars: {}, days: {}, images: {}, profiles: {}, schedules: {} };
       }
     }
 
@@ -2031,6 +2210,13 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       });
     }
 
+    function notifySchedules() {
+      const db = readDb();
+      scheduleListeners.forEach((listener) => {
+        listener.cb(Object.assign({}, (db.schedules || {})[listener.calId] || {}));
+      });
+    }
+
     function collectRange(calId, start, end) {
       const db = readDb();
       const all = db.days[calId] || {};
@@ -2047,6 +2233,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       notify();
       notifyCalendars();
       notifyProfiles();
+      notifySchedules();
     });
 
     return {
@@ -2105,6 +2292,29 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         const db = readDb();
         cb(Object.assign({}, (db.profiles || {})[calId] || {}));
         return () => profileListeners.delete(listener);
+      },
+      async setSchedule(calId, scheduleId, schedule) {
+        const db = readDb();
+        if (!db.schedules) db.schedules = {};
+        if (!db.schedules[calId]) db.schedules[calId] = {};
+        db.schedules[calId][scheduleId] = schedule;
+        writeDb(db);
+        notifySchedules();
+      },
+      async deleteSchedule(calId, scheduleId) {
+        const db = readDb();
+        if (db.schedules && db.schedules[calId]) {
+          delete db.schedules[calId][scheduleId];
+          writeDb(db);
+          notifySchedules();
+        }
+      },
+      subscribeSchedules(calId, cb) {
+        const listener = { calId: calId, cb: cb };
+        scheduleListeners.add(listener);
+        const db = readDb();
+        cb(Object.assign({}, (db.schedules || {})[calId] || {}));
+        return () => scheduleListeners.delete(listener);
       },
       subscribeCalendar(calId, cb) {
         const listener = { calId: calId, cb: cb };
@@ -2268,6 +2478,20 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       async setProfile(calId, uid, profile) {
         await setDoc(doc(db, 'calendars', calId, 'profiles', uid), profile);
       },
+      async setSchedule(calId, scheduleId, schedule) {
+        await setDoc(doc(db, 'calendars', calId, 'schedules', scheduleId), schedule);
+      },
+      async deleteSchedule(calId, scheduleId) {
+        await fsMod.deleteDoc(doc(db, 'calendars', calId, 'schedules', scheduleId));
+      },
+      // 빠른 일정은 수가 많지 않으므로 전체를 구독하고 화면 범위만 걸러 쓴다
+      subscribeSchedules(calId, cb) {
+        return onSnapshot(collection(db, 'calendars', calId, 'schedules'), (snapshot) => {
+          const result = {};
+          snapshot.forEach((docSnap) => { result[docSnap.id] = docSnap.data(); });
+          cb(result);
+        }, (err) => console.warn('일정 구독 오류', err));
+      },
       // 팀원 프로필도 실시간으로 갱신한다
       subscribeProfiles(calId, cb) {
         return onSnapshot(collection(db, 'calendars', calId, 'profiles'), (snapshot) => {
@@ -2404,10 +2628,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       storageAvailable: !!store.storageAvailable,
       subscribeRange: store.subscribeRange.bind(store),
       subscribeCalendar: store.subscribeCalendar.bind(store),
-      subscribeProfiles: store.subscribeProfiles.bind(store)
+      subscribeProfiles: store.subscribeProfiles.bind(store),
+      subscribeSchedules: store.subscribeSchedules.bind(store)
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
-     'setGroundRules', 'setProfile', 'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
+     'setGroundRules', 'setProfile', 'setSchedule', 'deleteSchedule',
+     'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
      'uploadImage', 'loadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
       guarded[key] = function () {
         const args = Array.prototype.slice.call(arguments);
@@ -2640,7 +2866,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
     if (state.unsubscribeCalendar) { state.unsubscribeCalendar(); state.unsubscribeCalendar = null; }
     if (state.unsubscribeProfiles) { state.unsubscribeProfiles(); state.unsubscribeProfiles = null; }
+    if (state.unsubscribeSchedules) { state.unsubscribeSchedules(); state.unsubscribeSchedules = null; }
     state.profiles = {};
+    state.schedules = {};
     clearSession();
     state.calendar = null;
     state.days = {};
@@ -2691,9 +2919,24 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     state.focusKey = toKey(today);
 
     subscribeProfiles();
+    subscribeSchedules();
     subscribeMonth();
     renderCalendar();
     cleanUrl();          // 합류가 끝났으니 주소에서 초대 파라미터를 지운다
+  }
+
+  // 빠른 일정을 실시간으로 구독한다
+  function subscribeSchedules() {
+    if (!state.calendar) return;
+    if (state.unsubscribeSchedules) { state.unsubscribeSchedules(); state.unsubscribeSchedules = null; }
+    try {
+      state.unsubscribeSchedules = state.store.subscribeSchedules(state.calendar.id, (schedules) => {
+        state.schedules = schedules || {};
+        renderCalendar();
+      });
+    } catch (err) {
+      console.warn('일정 구독 실패', err);
+    }
   }
 
   // 팀원 프로필을 실시간으로 구독한다
@@ -2811,6 +3054,332 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         : friendlyError(err), 'error');
     } finally {
       el.btnGroundSave.disabled = false;
+      setBusy(false);
+    }
+  }
+
+  /* =======================================================
+     빠른 일정 (기간 줄)
+     ======================================================= */
+  const SCHEDULE_COLORS = {
+    blue:   { bg: '#dbeafe', ink: '#1e40af', dot: '#2563eb', name: '파랑' },
+    green:  { bg: '#dcfce7', ink: '#166534', dot: '#16a34a', name: '초록' },
+    amber:  { bg: '#fef3c7', ink: '#92400e', dot: '#d97706', name: '노랑' },
+    red:    { bg: '#fee2e2', ink: '#991b1b', dot: '#dc2626', name: '빨강' },
+    purple: { bg: '#ede9fe', ink: '#5b21b6', dot: '#7c3aed', name: '보라' },
+    pink:   { bg: '#fce7f3', ink: '#9d174d', dot: '#db2777', name: '분홍' },
+    slate:  { bg: '#e2e8f0', ink: '#334155', dot: '#475569', name: '회색' }
+  };
+  const MAX_LANES = 3;          // 한 주에 보여 줄 최대 층
+  const LANE_H = 18;            // 줄 높이
+  const LANE_GAP = 3;
+  const LANE_STEP = LANE_H + LANE_GAP;
+  const MAX_SPAN_DAYS = 366;
+
+  const colorOf = (key) => SCHEDULE_COLORS[key] || SCHEDULE_COLORS.blue;
+
+  function normalizeSchedule(raw, id) {
+    if (!raw || typeof raw !== 'object') return null;
+    const title = typeof raw.title === 'string' ? raw.title.trim().slice(0, MAX_TITLE_LEN) : '';
+    const start = typeof raw.start === 'string' && DATE_KEY_RE.test(raw.start) ? raw.start : '';
+    const end = typeof raw.end === 'string' && DATE_KEY_RE.test(raw.end) ? raw.end : '';
+    if (!title || !start || !end) return null;
+    return {
+      id: id,
+      title: title,
+      color: SCHEDULE_COLORS[raw.color] ? raw.color : 'blue',
+      start: start <= end ? start : end,           // 뒤집혀 저장돼 있어도 바로잡아 읽는다
+      end: start <= end ? end : start,
+      authorId: cleanName(raw.authorId),
+      nickname: cleanName(raw.nickname),
+      createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : '',
+      updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : ''
+    };
+  }
+
+  const dayCount = (start, end) =>
+    Math.round((fromKey(end) - fromKey(start)) / 86400000) + 1;
+
+  const formatRange = (start, end) => {
+    const s = fromKey(start);
+    const e = fromKey(end);
+    const left = (s.getMonth() + 1) + '월 ' + s.getDate() + '일';
+    const right = (e.getMonth() + 1) + '월 ' + e.getDate() + '일';
+    return start === end ? left : left + ' ~ ' + right;
+  };
+
+  // 화면에 보이는 격자를 주 단위로 잘라 줄 조각과 층을 계산한다
+  function buildScheduleWeeks(days) {
+    const gridStart = toKey(days[0]);
+    const gridEnd = toKey(days[days.length - 1]);
+
+    const list = Object.keys(state.schedules)
+      .map((id) => normalizeSchedule(state.schedules[id], id))
+      .filter((s) => s && s.start <= gridEnd && s.end >= gridStart)
+      .sort((a, b) => {
+        const la = dayCount(a.start, a.end);
+        const lb = dayCount(b.start, b.end);
+        if (la !== lb) return lb - la;                       // 긴 일정을 위층에
+        if (a.start !== b.start) return a.start < b.start ? -1 : 1;
+        return a.id < b.id ? -1 : 1;
+      });
+
+    const weeks = [];
+    for (let w = 0; w * 7 < days.length; w += 1) {
+      const weekDays = days.slice(w * 7, w * 7 + 7);
+      const keys = weekDays.map(toKey);
+      const weekStart = keys[0];
+      const weekEnd = keys[6];
+      const lanes = [];
+      const segments = [];
+      let overflow = 0;
+
+      list.forEach((schedule) => {
+        if (schedule.start > weekEnd || schedule.end < weekStart) return;
+
+        const sc = schedule.start <= weekStart ? 0 : keys.indexOf(schedule.start);
+        const ec = schedule.end >= weekEnd ? 6 : keys.indexOf(schedule.end);
+        if (sc < 0 || ec < 0 || ec < sc) return;
+
+        // 겹치지 않는 첫 번째 층을 찾는다
+        let lane = 0;
+        while (lane < MAX_LANES && lanes[lane] &&
+               lanes[lane].some((r) => sc <= r.ec && ec >= r.sc)) lane += 1;
+        if (lane >= MAX_LANES) { overflow += 1; return; }
+
+        if (!lanes[lane]) lanes[lane] = [];
+        lanes[lane].push({ sc: sc, ec: ec });
+        segments.push({
+          schedule: schedule, lane: lane, sc: sc, ec: ec,
+          contLeft: schedule.start < weekStart,
+          contRight: schedule.end > weekEnd
+        });
+      });
+
+      weeks.push({ segments: segments, laneCount: lanes.length, overflow: overflow });
+    }
+    return weeks;
+  }
+
+  function buildScheduleBar(segment) {
+    const schedule = segment.schedule;
+    const color = colorOf(schedule.color);
+    const mine = schedule.authorId === myId();
+    const who = displayName(schedule.authorId, schedule.nickname);
+
+    const bar = document.createElement(mine ? 'button' : 'div');
+    if (mine) bar.type = 'button';
+    else bar.tabIndex = 0;                     // 남의 일정도 키보드로 확인은 가능
+
+    bar.className = 'sbar' + (mine ? ' is-mine' : '') +
+      (segment.contLeft ? ' cont-left' : '') + (segment.contRight ? ' cont-right' : '');
+    bar.dataset.scheduleId = schedule.id;
+    bar.style.gridColumn = (segment.sc + 1) + ' / ' + (segment.ec + 2);
+    bar.style.marginTop = (BAR_TOP() + segment.lane * LANE_STEP) + 'px';
+    bar.style.setProperty('--sbar-bg', color.bg);
+    bar.style.setProperty('--sbar-ink', color.ink);
+    bar.setAttribute('aria-label',
+      schedule.title + ', ' + formatRange(schedule.start, schedule.end) + ', ' + who + ' 등록' +
+      (mine ? ', 눌러서 수정' : ''));
+
+    if (segment.contLeft) {
+      const mark = document.createElement('span');
+      mark.className = 'sbar-cont';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = '‹';
+      bar.appendChild(mark);
+    }
+    const text = document.createElement('span');
+    text.className = 'sbar-text';
+    text.textContent = schedule.title;         // XSS 방지
+    bar.appendChild(text);
+
+    if (segment.contRight) {
+      const mark = document.createElement('span');
+      mark.className = 'sbar-cont';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = '›';
+      bar.appendChild(mark);
+    }
+    return bar;
+  }
+
+  // 날짜 숫자 아래에서 줄이 시작한다(화면 크기에 따라 다름)
+  const BAR_TOP = () => (window.innerWidth <= 720 ? 29 : 38);
+
+  /* ---------- 툴팁 ---------- */
+  function showScheduleTip(bar, schedule) {
+    const who = displayName(schedule.authorId, schedule.nickname);
+    el.scheduleTip.replaceChildren();
+
+    const title = document.createElement('div');
+    title.className = 'tip-title';
+    title.textContent = schedule.title;
+    const sub = document.createElement('div');
+    sub.className = 'tip-sub';
+    sub.textContent = formatRange(schedule.start, schedule.end) + ' · ' + who + ' 등록';
+    el.scheduleTip.appendChild(title);
+    el.scheduleTip.appendChild(sub);
+
+    el.scheduleTip.hidden = false;
+    const rect = bar.getBoundingClientRect();
+    const tip = el.scheduleTip.getBoundingClientRect();
+    let left = rect.left;
+    let top = rect.bottom + 8;
+    if (left + tip.width > window.innerWidth - 10) left = window.innerWidth - tip.width - 10;
+    if (left < 10) left = 10;
+    if (top + tip.height > window.innerHeight - 10) top = rect.top - tip.height - 8;
+    el.scheduleTip.style.left = Math.round(left) + 'px';
+    el.scheduleTip.style.top = Math.round(Math.max(10, top)) + 'px';
+  }
+
+  const hideScheduleTip = () => { el.scheduleTip.hidden = true; };
+
+  /* ---------- 등록 창 ---------- */
+  function renderColorPicker() {
+    el.colorPicker.replaceChildren();
+    Object.keys(SCHEDULE_COLORS).forEach((key) => {
+      const color = SCHEDULE_COLORS[key];
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'color-dot';
+      dot.dataset.color = key;
+      dot.style.setProperty('--dot', color.dot);
+      dot.setAttribute('role', 'radio');
+      dot.setAttribute('aria-checked', key === state.scheduleColor ? 'true' : 'false');
+      dot.setAttribute('aria-label', color.name);
+      dot.tabIndex = key === state.scheduleColor ? 0 : -1;
+
+      const check = document.createElement('span');
+      check.className = 'check';
+      check.setAttribute('aria-hidden', 'true');
+      check.textContent = '✓';
+      dot.appendChild(check);
+      el.colorPicker.appendChild(dot);
+    });
+  }
+
+  function updateSpanHint() {
+    const start = el.sStart.value;
+    const end = el.sEnd.value;
+    if (!DATE_KEY_RE.test(start) || !DATE_KEY_RE.test(end)) { el.scheduleSpan.textContent = ''; return; }
+    const from = start <= end ? start : end;
+    const to = start <= end ? end : start;
+    el.scheduleSpan.textContent = formatRange(from, to) + ' · ' + dayCount(from, to) + '일간';
+  }
+
+  function openScheduleEditor(scheduleId) {
+    const editing = !!scheduleId && state.schedules[scheduleId];
+    const schedule = editing ? normalizeSchedule(state.schedules[scheduleId], scheduleId) : null;
+
+    if (editing && (!schedule || schedule.authorId !== myId())) return;   // 등록자만 수정
+
+    state.scheduleTarget = editing ? scheduleId : '';
+    state.scheduleColor = schedule ? schedule.color : 'blue';
+
+    const base = state.focusKey && DATE_KEY_RE.test(state.focusKey)
+      ? state.focusKey : toKey(new Date(state.viewYear, state.viewMonth, 1));
+
+    el.scheduleTitle.textContent = editing ? '일정 수정' : '빠른 일정 등록';
+    el.scheduleMeta.textContent = editing
+      ? '등록 ' + (schedule.updatedAt ? formatUpdatedAt(schedule.updatedAt) : '')
+      : '기간을 정하면 달력에 줄로 표시됩니다.';
+    el.sTitle.value = schedule ? schedule.title : '';
+    el.sStart.value = schedule ? schedule.start : base;
+    el.sEnd.value = schedule ? schedule.end : base;
+    el.btnScheduleDelete.hidden = !editing;
+
+    renderColorPicker();
+    updateSpanHint();
+    hideScheduleTip();
+
+    el.scheduleBackdrop.hidden = false;
+    document.body.classList.add('is-locked');
+    el.app.setAttribute('aria-hidden', 'true');
+    el.scheduleSheet.focus();
+  }
+
+  function closeScheduleEditor() {
+    el.scheduleBackdrop.hidden = true;
+    if (!state.boardKey) document.body.classList.remove('is-locked');
+    el.app.removeAttribute('aria-hidden');
+    const target = state.scheduleTarget;
+    state.scheduleTarget = '';
+
+    const back = target
+      ? el.grid.querySelector('.sbar[data-schedule-id="' + cssEscape(target) + '"]')
+      : el.btnQuickSchedule;
+    (back || el.btnQuickSchedule).focus();
+  }
+
+  async function handleSaveSchedule() {
+    if (state.busy) return;
+    const title = el.sTitle.value.trim().slice(0, MAX_TITLE_LEN);
+    if (!title) { showToast('일정 내용을 입력해 주세요.', 'error'); el.sTitle.focus(); return; }
+
+    const a = el.sStart.value;
+    const b = el.sEnd.value;
+    if (!DATE_KEY_RE.test(a) || !DATE_KEY_RE.test(b)) {
+      showToast('기간을 올바르게 골라 주세요.', 'error');
+      el.sStart.focus();
+      return;
+    }
+    // 거꾸로 고르면 자동으로 바꿔 준다
+    const start = a <= b ? a : b;
+    const end = a <= b ? b : a;
+    if (dayCount(start, end) > MAX_SPAN_DAYS) {
+      showToast('기간은 최대 ' + MAX_SPAN_DAYS + '일까지 정할 수 있습니다.', 'error');
+      return;
+    }
+
+    const editing = !!state.scheduleTarget;
+    const scheduleId = editing ? state.scheduleTarget : 'sch_' + randomHex(8);
+    const previous = editing ? normalizeSchedule(state.schedules[scheduleId], scheduleId) : null;
+
+    const payload = {
+      title: title,
+      color: state.scheduleColor,
+      start: start,
+      end: end,
+      authorId: myId(),
+      nickname: state.session.nickname,
+      createdAt: (previous && previous.createdAt) || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setBusy(true);
+    try {
+      await state.store.setSchedule(state.calendar.id, scheduleId, payload);
+      closeScheduleEditor();
+      showToast(editing ? '일정을 수정했습니다.' : '일정을 등록했습니다.');
+    } catch (err) {
+      console.warn('일정 저장 실패', err);
+      const denied = /permission|insufficient/i.test(String((err && err.code) || (err && err.message) || ''));
+      showToast(denied
+        ? '일정 저장 권한이 없습니다. Firestore 규칙에 schedules 컬렉션 허용을 추가해 주세요.'
+        : friendlyError(err), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteSchedule() {
+    const scheduleId = state.scheduleTarget;
+    if (!scheduleId || state.busy) return;
+    const schedule = normalizeSchedule(state.schedules[scheduleId], scheduleId);
+    if (!schedule || schedule.authorId !== myId()) return;
+
+    if (!window.confirm("'" + schedule.title + "' 일정을 삭제할까요?")) return;
+
+    setBusy(true);
+    try {
+      await state.store.deleteSchedule(state.calendar.id, scheduleId);
+      closeScheduleEditor();
+      showToast('일정을 삭제했습니다.');
+    } catch (err) {
+      console.warn('일정 삭제 실패', err);
+      showToast(friendlyError(err), 'error');
+    } finally {
       setBusy(false);
     }
   }
@@ -3445,14 +4014,46 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     state.focusKey = focusKey;
 
     const days = buildMonthDays(state.viewYear, state.viewMonth);
+    const weeks = buildScheduleWeeks(days);        // 빠른 일정 줄을 주 단위로 계산
     const frag = document.createDocumentFragment();
     frag.appendChild(buildWeekdayRow());
 
     for (let i = 0; i < days.length; i += 7) {
+      const week = weeks[i / 7] || { segments: [], laneCount: 0, overflow: 0 };
+      const laneSpace = week.laneCount * LANE_STEP;
+
       const row = document.createElement('div');
       row.className = 'row';
       row.setAttribute('role', 'row');
-      days.slice(i, i + 7).forEach((date) => row.appendChild(buildCell(date, todayKey, focusKey)));
+
+      days.slice(i, i + 7).forEach((date) => {
+        const cell = buildCell(date, todayKey, focusKey);
+        if (laneSpace) {
+          // 줄이 지나가는 만큼 칸 안에 자리를 비워 둔다
+          const spacer = document.createElement('div');
+          spacer.className = 'lane-space';
+          spacer.style.height = laneSpace + 'px';
+          spacer.setAttribute('aria-hidden', 'true');
+          cell.insertBefore(spacer, cell.querySelector('.chips') || null);
+        }
+        row.appendChild(cell);
+      });
+
+      if (week.segments.length) {
+        const layer = document.createElement('div');
+        layer.className = 'bar-layer';
+        layer.setAttribute('role', 'presentation');
+        week.segments.forEach((segment) => layer.appendChild(buildScheduleBar(segment)));
+
+        if (week.overflow) {
+          const more = document.createElement('span');
+          more.className = 'sbar-more';
+          more.style.marginTop = (BAR_TOP() + MAX_LANES * LANE_STEP) + 'px';
+          more.textContent = '+' + week.overflow;
+          layer.appendChild(more);
+        }
+        row.appendChild(layer);
+      }
       frag.appendChild(row);
     }
 
@@ -5320,6 +5921,78 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     });
 
     // 게시판
+    // 빠른 일정
+    el.btnQuickSchedule.addEventListener('click', () => openScheduleEditor(''));
+    el.btnScheduleClose.addEventListener('click', closeScheduleEditor);
+    el.btnScheduleCancel.addEventListener('click', closeScheduleEditor);
+    el.btnScheduleSave.addEventListener('click', handleSaveSchedule);
+    el.btnScheduleDelete.addEventListener('click', handleDeleteSchedule);
+    el.sStart.addEventListener('change', updateSpanHint);
+    el.sEnd.addEventListener('change', updateSpanHint);
+    el.sTitle.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); handleSaveSchedule(); }
+    });
+    el.colorPicker.addEventListener('click', (event) => {
+      const dot = event.target.closest('.color-dot');
+      if (!dot) return;
+      state.scheduleColor = dot.dataset.color;
+      renderColorPicker();
+      const again = el.colorPicker.querySelector('.color-dot[data-color="' + cssEscape(state.scheduleColor) + '"]');
+      if (again) again.focus();
+    });
+    el.colorPicker.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      const keys = Object.keys(SCHEDULE_COLORS);
+      const at = keys.indexOf(state.scheduleColor);
+      const next = keys[(at + (event.key === 'ArrowRight' ? 1 : keys.length - 1)) % keys.length];
+      state.scheduleColor = next;
+      renderColorPicker();
+      const again = el.colorPicker.querySelector('.color-dot[data-color="' + cssEscape(next) + '"]');
+      if (again) again.focus();
+    });
+    el.scheduleBackdrop.addEventListener('mousedown', (event) => {
+      state.scheduleDown = event.target === el.scheduleBackdrop;
+    });
+    el.scheduleBackdrop.addEventListener('click', (event) => {
+      if (event.target === el.scheduleBackdrop && state.scheduleDown) closeScheduleEditor();
+      state.scheduleDown = false;
+    });
+    el.scheduleBackdrop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeScheduleEditor(); }
+      else if (event.key === 'Tab') trapTab(el.scheduleSheet, event);
+    });
+
+    // 일정 줄: 마우스를 올리면 내용, 등록자만 클릭해서 수정
+    el.grid.addEventListener('pointerover', (event) => {
+      const bar = event.target.closest('.sbar');
+      if (!bar) return;
+      const schedule = normalizeSchedule(state.schedules[bar.dataset.scheduleId], bar.dataset.scheduleId);
+      if (schedule) showScheduleTip(bar, schedule);
+    });
+    el.grid.addEventListener('pointerout', (event) => {
+      if (event.target.closest('.sbar')) hideScheduleTip();
+    });
+    el.grid.addEventListener('focusin', (event) => {
+      const bar = event.target.closest('.sbar');
+      if (!bar) { hideScheduleTip(); return; }
+      const schedule = normalizeSchedule(state.schedules[bar.dataset.scheduleId], bar.dataset.scheduleId);
+      if (schedule) showScheduleTip(bar, schedule);
+    });
+    el.grid.addEventListener('focusout', (event) => {
+      if (event.target.closest('.sbar')) hideScheduleTip();
+    });
+    el.grid.addEventListener('click', (event) => {
+      const bar = event.target.closest('.sbar');
+      if (!bar) return;
+      event.stopPropagation();                 // 날짜 칸(게시판)이 열리지 않게 막는다
+      const schedule = normalizeSchedule(state.schedules[bar.dataset.scheduleId], bar.dataset.scheduleId);
+      if (!schedule) return;
+      if (schedule.authorId === myId()) openScheduleEditor(schedule.id);
+      else showScheduleTip(bar, schedule);     // 남의 일정은 내용만 보여 준다
+    }, true);
+    window.addEventListener('scroll', hideScheduleTip, true);
+
     // 팀원 프로필
     el.profileStrip.addEventListener('click', (event) => {
       const item = event.target.closest('.profile-item');
@@ -5560,6 +6233,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       'signupForm', 'signupId', 'signupPw', 'signupNick', 'btnSignup', 'btnGoLogin',
       'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'whoName', 'btnLogout',
       'teamLabel', 'profileStrip', 'inviteBox', 'inviteInput', 'btnInviteClose',
+      'btnQuickSchedule', 'scheduleBackdrop', 'scheduleSheet', 'scheduleTitle', 'scheduleMeta',
+      'btnScheduleClose', 'sTitle', 'sStart', 'sEnd', 'scheduleSpan', 'colorPicker',
+      'btnScheduleDelete', 'btnScheduleCancel', 'btnScheduleSave', 'scheduleTip',
       'profileBackdrop', 'profileSheet', 'profileTitle', 'profileMeta', 'btnProfileClose',
       'profileView', 'profileHeroAvatar', 'profileViewName', 'profileViewRole', 'profileFields',
       'profileEdit', 'avatarPreview', 'btnPickAvatar', 'btnClearAvatar', 'fileAvatar',
