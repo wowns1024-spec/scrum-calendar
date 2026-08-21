@@ -461,7 +461,106 @@ input[type="password"]:focus {
 .cal-title { margin: 0; font-size: 22px; letter-spacing: -0.3px; }
 .cal-summary { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
 .nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.btn-quick { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; }
+.btn-quick { display: inline-flex; align-items: center; gap: 6px; }
+
+/* =========================================================
+   달력 색칠
+   ========================================================= */
+.paint-wrap { position: relative; margin-right: 4px; }
+
+/* 버튼 바로 위에 붙어서 열린다 */
+.paint-pop {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: 190px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(17, 24, 39, 0.16);
+  padding: 8px;
+}
+.paint-pop::after {           /* 아래를 향한 꼬리 */
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: calc(50% - var(--tail-shift, 0px));
+  margin-left: -7px;
+  border: 7px solid transparent;
+  border-top-color: var(--surface);
+  filter: drop-shadow(0 1px 0 var(--line-strong));
+}
+.paint-options { display: flex; flex-direction: column; gap: 2px; }
+.paint-option {
+  appearance: none;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 9px;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: left;
+}
+.paint-option:hover { background: var(--surface-2); }
+.paint-swatch {
+  width: 20px; height: 20px;
+  flex: none;
+  border-radius: 6px;
+  background: var(--swatch);
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--swatch-ink);
+}
+.paint-hint { margin: 6px 4px 2px; font-size: 11px; color: var(--muted); }
+
+.paint-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  background: var(--blue-soft);
+  border: 1px solid var(--blue-line);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue-deep);
+}
+.paint-banner .btn { padding: 5px 10px; font-size: 12px; }
+
+/* 색칠 대기 상태 */
+.grid.is-painting .cell { cursor: crosshair; }
+.grid.is-painting .cell:hover { outline: 2px dashed var(--blue); outline-offset: -3px; }
+.grid.is-painting .bar-layer { pointer-events: none; }   /* 일정 줄이 클릭을 가로채지 않게 */
+
+/* 칠해진 날짜 */
+.cell.is-painted { background: var(--paint-bg); }
+.cell.is-painted:hover { background: var(--paint-bg-hover); }
+.cell.is-painted.is-outside { background: var(--paint-bg-out); }
+.paint-mark {
+  flex: none;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.5;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--paint-ink);
+  border: 1px solid var(--paint-ink);
+}
 
 /* =========================================================
    빠른 일정 줄
@@ -1437,11 +1536,27 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         <button type="button" class="btn btn-quick" id="btnQuickSchedule" aria-label="빠른 일정 등록">
           <span aria-hidden="true">＋</span><span class="quick-label">빠른 일정 등록</span>
         </button>
+
+        <div class="paint-wrap">
+          <button type="button" class="btn btn-quick" id="btnPaint" aria-label="달력 색칠"
+                  aria-expanded="false" aria-haspopup="true">
+            <span aria-hidden="true">🎨</span><span class="quick-label">달력 색칠</span>
+          </button>
+          <div class="paint-pop" id="paintPop" role="radiogroup" aria-label="칠할 색 고르기" hidden>
+            <div class="paint-options" id="paintOptions"></div>
+            <p class="paint-hint">같은 색을 다시 칠하면 지워집니다.</p>
+          </div>
+        </div>
         <button type="button" class="btn nav-btn" id="btnPrev" aria-label="이전 달 보기">&#8249;</button>
         <button type="button" class="btn" id="btnToday">오늘</button>
         <button type="button" class="btn nav-btn" id="btnNext" aria-label="다음 달 보기">&#8250;</button>
       </div>
     </div>
+
+    <p class="paint-banner" id="paintBanner" hidden>
+      <span id="paintBannerText"></span>
+      <button type="button" class="btn" id="btnPaintCancel">취소</button>
+    </p>
 
     <div class="grid" id="grid" role="grid" aria-labelledby="calTitle"></div>
 
@@ -1450,6 +1565,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       <span class="legend-item"><span class="badge badge-team">2<span class="b-label">명</span></span> 팀원만 작성</span>
       <span class="legend-item"><span class="badge badge-block"><span class="b-icon">!</span><span class="b-label">막힘</span></span> 막힌 점 있음</span>
       <span class="legend-item"><span class="chip">이벤트 제목</span> 등록된 일정</span>
+      <span class="legend-item"><span class="paint-swatch" style="--swatch:#fee2e2;--swatch-ink:#991b1b" aria-hidden="true">휴</span> 공휴일</span>
+      <span class="legend-item"><span class="paint-swatch" style="--swatch:#dbeafe;--swatch-ink:#1e40af" aria-hidden="true">발</span> 중간발표</span>
+      <span class="legend-item"><span class="paint-swatch" style="--swatch:#fef3c7;--swatch-ink:#92400e" aria-hidden="true">D</span> D-DAY</span>
     </div>
   </main>
 </div>
@@ -1789,7 +1907,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
              // 참여자 추가와 팀 그라운드 룰 수정만 허용한다
              allow update: if request.auth != null
                && request.resource.data.diff(resource.data).affectedKeys()
-                    .hasOnly(['members', 'groundRules', 'groundRulesBy', 'groundRulesAt']);
+                    .hasOnly(['members', 'groundRules', 'groundRulesBy',
+                              'groundRulesAt', 'dayColors']);
              match /days/{dayId} {
                allow read, write: if request.auth != null;
              }
@@ -1890,6 +2009,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     schedules: {},          // { 일정ID: 일정 }
     scheduleTarget: '',     // 수정 중인 일정 ID('' = 새 일정)
     scheduleColor: 'blue',
+    paintColor: '',         // 색칠 대기 중인 색('' = 대기 아님)
+    paintOpen: false,
     profiles: {},           // { 아이디: 프로필 }
     profileTarget: '',      // 프로필 모달에서 보고 있는 사람
     profileMode: null,      // 'view' | 'edit'
@@ -2278,6 +2399,16 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         writeDb(db);
         notifyCalendars();
       },
+      async setDayColor(calId, dateKey, color) {
+        const db = readDb();
+        const cal = db.calendars[calId];
+        if (!cal) throw new Error('달력을 찾을 수 없습니다.');
+        cal.dayColors = Object.assign({}, cal.dayColors);
+        if (color) cal.dayColors[dateKey] = color;
+        else delete cal.dayColors[dateKey];
+        writeDb(db);
+        notifyCalendars();
+      },
       async setProfile(calId, uid, profile) {
         const db = readDb();
         if (!db.profiles) db.profiles = {};
@@ -2478,6 +2609,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       async setProfile(calId, uid, profile) {
         await setDoc(doc(db, 'calendars', calId, 'profiles', uid), profile);
       },
+      // 날짜 색은 달력 문서의 맵에 한 칸씩 고쳐 넣는다(동시에 칠해도 서로 지워지지 않게).
+      // 날짜 키에 '-' 가 들어가므로 문자열 경로 대신 FieldPath 를 쓴다.
+      async setDayColor(calId, dateKey, color) {
+        const path = new fsMod.FieldPath('dayColors', dateKey);
+        await updateDoc(doc(db, 'calendars', calId), path, color ? color : deleteField());
+      },
       async setSchedule(calId, scheduleId, schedule) {
         await setDoc(doc(db, 'calendars', calId, 'schedules', scheduleId), schedule);
       },
@@ -2632,7 +2769,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       subscribeSchedules: store.subscribeSchedules.bind(store)
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
-     'setGroundRules', 'setProfile', 'setSchedule', 'deleteSchedule',
+     'setGroundRules', 'setProfile', 'setDayColor', 'setSchedule', 'deleteSchedule',
      'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
      'uploadImage', 'loadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
       guarded[key] = function () {
@@ -3055,6 +3192,137 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     } finally {
       el.btnGroundSave.disabled = false;
       setBusy(false);
+    }
+  }
+
+  /* =======================================================
+     달력 색칠 (공휴일 · 중간발표 · D-DAY)
+     ======================================================= */
+  const DAY_COLORS = {
+    red:    { name: '공휴일',   mark: '휴', bg: '#fee2e2', hover: '#fdd5d5', out: '#fdf1f1', ink: '#991b1b', dot: '#fca5a5' },
+    blue:   { name: '중간발표', mark: '발', bg: '#dbeafe', hover: '#cfe3fd', out: '#eef4fe', ink: '#1e40af', dot: '#93c5fd' },
+    yellow: { name: 'D-DAY',    mark: 'D', bg: '#fef3c7', hover: '#fdebb0', out: '#fefaeb', ink: '#92400e', dot: '#fcd34d' }
+  };
+
+  const dayColorOf = (key) => {
+    const colors = (state.calendar && state.calendar.dayColors) || {};
+    const value = colors[key];
+    return DAY_COLORS[value] ? value : '';
+  };
+
+  function renderPaintOptions() {
+    el.paintOptions.replaceChildren();
+    Object.keys(DAY_COLORS).forEach((key) => {
+      const color = DAY_COLORS[key];
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'paint-option';
+      option.dataset.color = key;
+      option.setAttribute('role', 'radio');
+      option.setAttribute('aria-checked', key === state.paintColor ? 'true' : 'false');
+
+      const swatch = document.createElement('span');
+      swatch.className = 'paint-swatch';
+      swatch.style.setProperty('--swatch', color.bg);
+      swatch.style.setProperty('--swatch-ink', color.ink);
+      swatch.setAttribute('aria-hidden', 'true');
+      swatch.textContent = color.mark;
+
+      const label = document.createElement('span');
+      label.textContent = color.name;           // 색만이 아니라 뜻도 함께
+
+      option.appendChild(swatch);
+      option.appendChild(label);
+      el.paintOptions.appendChild(option);
+    });
+  }
+
+  function openPaintPop() {
+    renderPaintOptions();
+    el.paintPop.hidden = false;
+    state.paintOpen = true;
+    el.btnPaint.setAttribute('aria-expanded', 'true');
+    positionPaintPop();
+    const first = el.paintOptions.querySelector('.paint-option');
+    if (first) first.focus();
+  }
+
+  // 좁은 화면에서 팝오버가 화면 밖으로 나가지 않게 옆으로 밀어 준다
+  function positionPaintPop() {
+    el.paintPop.style.transform = 'translateX(-50%)';
+    el.paintPop.style.setProperty('--tail-shift', '0px');
+
+    const rect = el.paintPop.getBoundingClientRect();
+    const margin = 8;
+    let shift = 0;
+    if (rect.right > window.innerWidth - margin) shift = window.innerWidth - margin - rect.right;
+    else if (rect.left < margin) shift = margin - rect.left;
+
+    if (shift) {
+      el.paintPop.style.transform = 'translateX(calc(-50% + ' + Math.round(shift) + 'px))';
+      el.paintPop.style.setProperty('--tail-shift', Math.round(shift) + 'px');
+    }
+  }
+
+  function closePaintPop(focusBack) {
+    el.paintPop.hidden = true;
+    state.paintOpen = false;
+    el.btnPaint.setAttribute('aria-expanded', 'false');
+    if (focusBack) el.btnPaint.focus();
+  }
+
+  // 색을 고르면 '한 번만' 칠할 수 있는 대기 상태가 된다
+  function armPaint(colorKey) {
+    if (!DAY_COLORS[colorKey]) return;
+    state.paintColor = colorKey;
+    closePaintPop(false);
+
+    const color = DAY_COLORS[colorKey];
+    el.paintBannerText.textContent =
+      '칠할 날짜를 클릭하세요 — ' + color.name + '. 한 번 칠하면 끝납니다.';
+    el.paintBanner.hidden = false;
+    el.grid.classList.add('is-painting');
+    focusCell(state.focusKey);
+  }
+
+  function disarmPaint() {
+    if (!state.paintColor) return;
+    state.paintColor = '';
+    el.paintBanner.hidden = true;
+    el.paintBannerText.textContent = '';
+    el.grid.classList.remove('is-painting');
+  }
+
+  // 날짜 한 칸을 칠한다. 같은 색이면 지운다.
+  async function paintDay(dateKey) {
+    const colorKey = state.paintColor;
+    if (!colorKey || !state.calendar) return;
+
+    const current = dayColorOf(dateKey);
+    const next = current === colorKey ? '' : colorKey;
+    disarmPaint();                       // 한 번에 한 칸만 칠한다
+
+    // 응답을 기다리는 동안에도 바로 보이게 먼저 반영한다
+    if (!state.calendar.dayColors) state.calendar.dayColors = {};
+    if (next) state.calendar.dayColors[dateKey] = next;
+    else delete state.calendar.dayColors[dateKey];
+    renderCalendar();
+
+    try {
+      await state.store.setDayColor(state.calendar.id, dateKey, next);
+      showToast(next
+        ? DAY_COLORS[next].name + '로 칠했습니다 — ' + formatKoreanDate(fromKey(dateKey))
+        : '색을 지웠습니다 — ' + formatKoreanDate(fromKey(dateKey)));
+    } catch (err) {
+      console.warn('색칠 실패', err);
+      // 실패하면 되돌린다
+      if (current) state.calendar.dayColors[dateKey] = current;
+      else delete state.calendar.dayColors[dateKey];
+      renderCalendar();
+      const denied = /permission|insufficient/i.test(String((err && err.code) || (err && err.message) || ''));
+      showToast(denied
+        ? '색칠 권한이 없습니다. Firestore 규칙의 달력 수정 목록에 dayColors 를 추가해 주세요.'
+        : friendlyError(err), 'error');
     }
   }
 
@@ -3905,8 +4173,18 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     const isToday = key === todayKey;
     const dow = date.getDay();
 
+    const painted = dayColorOf(key);
+    const paint = painted ? DAY_COLORS[painted] : null;
+
     const cell = document.createElement('div');
+    if (paint) {
+      cell.style.setProperty('--paint-bg', paint.bg);
+      cell.style.setProperty('--paint-bg-hover', paint.hover);
+      cell.style.setProperty('--paint-bg-out', paint.out);
+      cell.style.setProperty('--paint-ink', paint.ink);
+    }
     cell.className = 'cell' +
+      (paint ? ' is-painted' : '') +
       (inMonth ? '' : ' is-outside') +
       (isToday ? ' is-today' : '') +
       (dow === 6 ? ' is-sat' : '') +
@@ -3922,6 +4200,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       date.getDate() + '일 ' + DAY_KO[dow] + '요일'
     ];
     if (isToday) labelParts.push('오늘');
+    if (paint) labelParts.push(paint.name);
     if (!inMonth) labelParts.push('다른 달');
     if (info.count) {
       labelParts.push('작성 ' + info.count + '명: ' + info.nicknames.join(', '));
@@ -3944,6 +4223,14 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     dayNum.className = 'daynum';
     dayNum.textContent = String(date.getDate());
     top.appendChild(dayNum);
+
+    if (paint) {                       // 색만으로 구분되지 않게 표식을 붙인다
+      const mark = document.createElement('span');
+      mark.className = 'paint-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = paint.mark;
+      top.appendChild(mark);
+    }
 
     const badges = document.createElement('span');
     badges.className = 'badges';
@@ -5861,7 +6148,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       case ' ':
       case 'Spacebar':
         event.preventDefault();
-        openBoard(cell.dataset.key);
+        if (state.paintColor) paintDay(cell.dataset.key);   // 색칠 대기 중이면 칠한다
+        else openBoard(cell.dataset.key);
         return;
       default:
         return;
@@ -5921,6 +6209,50 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     });
 
     // 게시판
+    // 달력 색칠
+    el.btnPaint.addEventListener('click', () => {
+      if (state.paintOpen) { closePaintPop(true); return; }
+      disarmPaint();
+      openPaintPop();
+    });
+    el.paintOptions.addEventListener('click', (event) => {
+      const option = event.target.closest('.paint-option');
+      if (option) armPaint(option.dataset.color);
+    });
+    el.paintPop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closePaintPop(true); return; }
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      const options = [...el.paintOptions.querySelectorAll('.paint-option')];
+      const at = options.indexOf(document.activeElement);
+      const step = event.key === 'ArrowDown' ? 1 : options.length - 1;
+      options[(Math.max(0, at) + step) % options.length].focus();
+    });
+    el.btnPaintCancel.addEventListener('click', () => {
+      disarmPaint();
+      el.btnPaint.focus();
+    });
+    document.addEventListener('click', (event) => {
+      if (!state.paintOpen) return;
+      if (event.target.closest('.paint-wrap')) return;
+      closePaintPop(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (state.paintOpen) { closePaintPop(true); return; }
+      if (state.paintColor) { disarmPaint(); el.btnPaint.focus(); }
+    });
+
+    // 색칠 대기 상태에서는 날짜 클릭이 색칠로 간다(게시판은 열리지 않는다)
+    el.grid.addEventListener('click', (event) => {
+      if (!state.paintColor) return;
+      const cell = event.target.closest('.cell');
+      if (!cell) return;
+      event.stopPropagation();
+      event.preventDefault();
+      paintDay(cell.dataset.key);
+    }, true);
+
     // 빠른 일정
     el.btnQuickSchedule.addEventListener('click', () => openScheduleEditor(''));
     el.btnScheduleClose.addEventListener('click', closeScheduleEditor);
@@ -5983,6 +6315,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       if (event.target.closest('.sbar')) hideScheduleTip();
     });
     el.grid.addEventListener('click', (event) => {
+      if (state.paintColor) return;            // 색칠 중에는 아래 날짜가 칠해지게 둔다
       const bar = event.target.closest('.sbar');
       if (!bar) return;
       event.stopPropagation();                 // 날짜 칸(게시판)이 열리지 않게 막는다
@@ -6233,6 +6566,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       'signupForm', 'signupId', 'signupPw', 'signupNick', 'btnSignup', 'btnGoLogin',
       'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'whoName', 'btnLogout',
       'teamLabel', 'profileStrip', 'inviteBox', 'inviteInput', 'btnInviteClose',
+      'btnPaint', 'paintPop', 'paintOptions', 'paintBanner', 'paintBannerText', 'btnPaintCancel',
       'btnQuickSchedule', 'scheduleBackdrop', 'scheduleSheet', 'scheduleTitle', 'scheduleMeta',
       'btnScheduleClose', 'sTitle', 'sStart', 'sEnd', 'scheduleSpan', 'colorPicker',
       'btnScheduleDelete', 'btnScheduleCancel', 'btnScheduleSave', 'scheduleTip',
