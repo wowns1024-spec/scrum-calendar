@@ -752,6 +752,8 @@ input[type="password"]:focus {
   line-height: 0;
 }
 .img-thumb img { width: 100%; height: 92px; object-fit: cover; display: block; }
+/* 사진 데이터를 불러오는 동안 자리를 잡아 둔다 */
+img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6e9ee 8px 16px); }
 .img-thumb.is-pending::after {
   content: '업로드 예정';
   position: absolute;
@@ -1326,6 +1328,14 @@ input[type="password"]:focus {
              match /days/{dayId} {
                allow read, write: if request.auth != null;
              }
+             // 자유 메모의 사진. Storage(유료 플랜) 대신 Firestore 문서에 담는다.
+             match /images/{imageId} {
+               allow read: if request.auth != null;
+               allow create, update: if request.auth != null
+                 && request.resource.data.data is string
+                 && request.resource.data.data.size() < 950000;
+               allow delete: if request.auth != null;
+             }
            }
          }
        }
@@ -1351,8 +1361,14 @@ input[type="password"]:focus {
   const MAX_COMMENT_LEN = 500;
   const MAX_IMAGES = 6;
   const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;   // 원본 파일 상한
-  const IMAGE_MAX_SIDE = 1600;                // 업로드 전 리사이즈 기준
-  const IMAGE_QUALITY = 0.8;
+  // 사진은 Firestore 문서에 담기므로(문서 1MB 제한) 아래 순서로 줄여 가며 맞춘다
+  const IMAGE_STEPS = [
+    { side: 1000, quality: 0.65 },
+    { side: 800, quality: 0.55 },
+    { side: 600, quality: 0.5 },
+    { side: 480, quality: 0.45 }
+  ];
+  const MAX_IMAGE_CHARS = 900000;             // base64 길이 상한(문서 1MB 여유분)
   const HOLE = 28;                            // 타공판 구멍 간격 = 스냅 단위
   const CANVAS_W = 1204;                      // 자유 배치 캔버스 폭(1280 화면에서 가로 스크롤이 안 생기게)
   const MEMO_W = 240;                         // 캔버스 모드 메모 폭
@@ -1546,14 +1562,16 @@ input[type="password"]:focus {
     };
   }
 
+  // 메모에는 사진의 참조만 담는다. 실제 이미지 데이터는 별도 문서에서 불러온다.
   function normalizeImage(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const url = typeof raw.url === 'string' ? raw.url : '';
-    if (!url) return null;
+    const path = typeof raw.path === 'string' ? raw.path : '';
+    if (!url && !path) return null;
     return {
       id: typeof raw.id === 'string' && raw.id ? raw.id : createId(),
-      url: url,
-      path: typeof raw.path === 'string' ? raw.path : '',
+      url: url,            // 예전 방식(Storage 다운로드 URL)과의 호환용
+      path: path,          // 이미지 문서 ID
       w: asNumber(raw.w) || 0,
       h: asNumber(raw.h) || 0
     };
@@ -1665,10 +1683,11 @@ input[type="password"]:focus {
         return {
           users: parsed.users && typeof parsed.users === 'object' ? parsed.users : {},
           calendars: parsed.calendars && typeof parsed.calendars === 'object' ? parsed.calendars : {},
-          days: parsed.days && typeof parsed.days === 'object' ? parsed.days : {}
+          days: parsed.days && typeof parsed.days === 'object' ? parsed.days : {},
+          images: parsed.images && typeof parsed.images === 'object' ? parsed.images : {}
         };
       } catch (err) {
-        return { users: {}, calendars: {}, days: {} };
+        return { users: {}, calendars: {}, days: {}, images: {} };
       }
     }
 
@@ -1803,18 +1822,31 @@ input[type="password"]:focus {
         writeDb(db);
         notify();
       },
-      // 로컬 모드에서는 이미지를 data URL 로 보관한다(용량 때문에 작게 줄여 저장)
+      // 사진은 별도 저장소 없이 데이터로 보관한다
       storageAvailable: true,
-      async uploadImage(calId, dateKey, memoId, imageId, blob) {
-        const url = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = () => reject(new Error('이미지를 읽지 못했습니다.'));
-          reader.readAsDataURL(blob);
-        });
-        return { url: url, path: '' };
+      async uploadImage(calId, dateKey, memoId, imageId, dataUrl, size) {
+        const db = readDb();
+        if (!db.images) db.images = {};
+        if (!db.images[calId]) db.images[calId] = {};
+        db.images[calId][imageId] = {
+          data: dataUrl, w: size.w, h: size.h,
+          dateKey: dateKey, memoId: memoId, createdAt: new Date().toISOString()
+        };
+        writeDb(db);
+        return { url: '', path: imageId };
       },
-      async deleteImage() { /* 로컬 모드에는 지울 파일이 없다 */ },
+      async loadImage(calId, imageId) {
+        const db = readDb();
+        const found = db.images && db.images[calId] && db.images[calId][imageId];
+        return found ? found.data : '';
+      },
+      async deleteImage(calId, imageId) {
+        const db = readDb();
+        if (db.images && db.images[calId]) {
+          delete db.images[calId][imageId];
+          writeDb(db);
+        }
+      },
       async fetchAllDays(calId) {
         const db = readDb();
         const all = db.days[calId] || {};
@@ -1849,18 +1881,7 @@ input[type="password"]:focus {
     const app = appMod.initializeApp(config);
     const db = fsMod.getFirestore(app);
 
-    // 사진 업로드용 Storage (설정에 버킷이 없으면 사진 기능만 꺼진다)
-    let storageMod = null;
-    let storage = null;
-    if (config.storageBucket) {
-      try {
-        storageMod = await import(base + 'firebase-storage.js');
-        storage = storageMod.getStorage(app);
-      } catch (err) {
-        console.warn('Storage 를 사용할 수 없습니다. 사진 기능이 꺼집니다.', err);
-        storageMod = null;
-      }
-    }
+    // 사진은 Firestore 에 담으므로 Storage(유료 플랜 필요)를 쓰지 않는다.
 
     // 보안 규칙에서 request.auth 를 쓰기 위해 익명 로그인을 시도한다.
     try {
@@ -1951,19 +1972,28 @@ input[type="password"]:focus {
         patch['memos.' + memoId + '.comments'] = fsMod.arrayRemove(comment);
         await updateDoc(dayRef(calId, dateKey), patch);
       },
-      storageAvailable: !!storage,
-      async uploadImage(calId, dateKey, memoId, imageId, blob) {
-        if (!storage) throw new Error('사진 저장소(Storage)가 준비되지 않았습니다.');
-        const path = 'calendars/' + calId + '/' + dateKey + '/' + memoId + '/' + imageId + '.jpg';
-        const fileRef = storageMod.ref(storage, path);
-        await storageMod.uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
-        const url = await storageMod.getDownloadURL(fileRef);
-        return { url: url, path: path };
+      // 사진은 Storage 대신 Firestore 문서에 담는다(무료 플랜에서 그대로 쓸 수 있다).
+      // 메모 문서가 커지지 않도록 사진마다 별도 문서를 쓴다.
+      storageAvailable: true,
+      async uploadImage(calId, dateKey, memoId, imageId, dataUrl, size) {
+        await setDoc(doc(db, 'calendars', calId, 'images', imageId), {
+          data: dataUrl,
+          w: size.w,
+          h: size.h,
+          dateKey: dateKey,
+          memoId: memoId,
+          createdAt: new Date().toISOString()
+        });
+        return { url: '', path: imageId };
       },
-      async deleteImage(path) {
-        if (!storage || !path) return;
+      async loadImage(calId, imageId) {
+        const snap = await getDoc(doc(db, 'calendars', calId, 'images', imageId));
+        return snap.exists() ? String(snap.data().data || '') : '';
+      },
+      async deleteImage(calId, imageId) {
+        if (!imageId) return;
         try {
-          await storageMod.deleteObject(storageMod.ref(storage, path));
+          await fsMod.deleteDoc(doc(db, 'calendars', calId, 'images', imageId));
         } catch (err) {
           console.warn('사진을 지우지 못했습니다.', err);
         }
@@ -2023,7 +2053,7 @@ input[type="password"]:focus {
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
      'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
-     'uploadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
+     'uploadImage', 'loadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
       guarded[key] = function () {
         const args = Array.prototype.slice.call(arguments);
         return withTimeout(Promise.resolve().then(() => store[key].apply(store, args)), ms);
@@ -2880,9 +2910,9 @@ input[type="password"]:focus {
         const shot = document.createElement('div');
         shot.className = 'memo-thumb';
         const img = document.createElement('img');
-        img.src = memo.images[0].url;
         img.alt = nickname + '님이 올린 사진';
         img.loading = 'lazy';
+        resolveImageInto(img, memo.images[0]);     // 사진 데이터는 따로 불러온다
         shot.appendChild(img);
         if (memo.images.length > 1) {
           const more = document.createElement('span');
@@ -3215,7 +3245,7 @@ input[type="password"]:focus {
     el.imageGrid.replaceChildren();
     state.draftImages.forEach((img) => {
       const cell = document.createElement('div');
-      cell.className = 'img-thumb' + (img.file ? ' is-pending' : '');
+      cell.className = 'img-thumb' + (img.data ? ' is-pending' : '');
 
       const picture = document.createElement('img');
       picture.src = img.url;
@@ -3235,36 +3265,69 @@ input[type="password"]:focus {
     el.btnPickImage.disabled = state.draftImages.length >= MAX_IMAGES;
   }
 
-  // 업로드 전에 브라우저에서 줄이고 압축한다
+  // 저장 전에 브라우저에서 줄이고 압축한다.
+  // 문서 하나에 담아야 하므로 정해진 크기 아래로 내려갈 때까지 단계적으로 줄인다.
   function resizeImage(file) {
     return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
+      const objectUrl = URL.createObjectURL(file);
       const image = new Image();
+
       image.onload = () => {
-        const maxSide = state.mode === 'local' ? 800 : IMAGE_MAX_SIDE;
-        const ratio = Math.min(1, maxSide / Math.max(image.width, image.height));
-        const w = Math.max(1, Math.round(image.width * ratio));
-        const h = Math.max(1, Math.round(image.height * ratio));
+        URL.revokeObjectURL(objectUrl);
         const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext('2d').drawImage(image, 0, 0, w, h);
-        URL.revokeObjectURL(url);
-        canvas.toBlob((blob) => {
-          if (!blob) { reject(new Error('사진을 변환하지 못했습니다.')); return; }
-          resolve({ blob: blob, w: w, h: h });
-        }, 'image/jpeg', state.mode === 'local' ? 0.6 : IMAGE_QUALITY);
+        let best = null;
+
+        for (let i = 0; i < IMAGE_STEPS.length; i += 1) {
+          const step = IMAGE_STEPS[i];
+          const ratio = Math.min(1, step.side / Math.max(image.width, image.height));
+          const w = Math.max(1, Math.round(image.width * ratio));
+          const h = Math.max(1, Math.round(image.height * ratio));
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, w, h);              // 투명 배경(PNG)은 흰색으로
+          ctx.drawImage(image, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', step.quality);
+          best = { dataUrl: dataUrl, w: w, h: h };
+          if (dataUrl.length <= MAX_IMAGE_CHARS) break;
+        }
+
+        if (!best || best.dataUrl.length > MAX_IMAGE_CHARS) {
+          reject(new Error('사진 용량이 너무 커서 넣을 수 없습니다. 더 작은 사진을 사용해 주세요.'));
+          return;
+        }
+        resolve(best);
       };
-      image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('사진을 읽지 못했습니다.')); };
-      image.src = url;
+
+      image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('사진을 읽지 못했습니다.')); };
+      image.src = objectUrl;
+    });
+  }
+
+  // 사진 데이터는 메모와 따로 저장하므로 필요할 때 불러와 캐시에 담는다
+  const imageCache = new Map();
+
+  function resolveImageInto(imgEl, image) {
+    if (image.url) { imgEl.src = image.url; return; }        // 예전 Storage 방식과의 호환
+    if (!image.path) return;
+
+    const cached = imageCache.get(image.path);
+    if (cached) { imgEl.src = cached; return; }
+
+    imgEl.classList.add('is-loading');
+    state.store.loadImage(state.calendar.id, image.path).then((data) => {
+      imgEl.classList.remove('is-loading');
+      if (!data) return;
+      imageCache.set(image.path, data);
+      imgEl.src = data;
+    }).catch((err) => {
+      imgEl.classList.remove('is-loading');
+      console.warn('사진을 불러오지 못했습니다.', err);
     });
   }
 
   async function addDraftImages(files) {
-    if (!state.store.storageAvailable) {
-      showToast('사진 저장소를 사용할 수 없어 사진을 넣을 수 없습니다.', 'error');
-      return;
-    }
     const list = Array.prototype.slice.call(files || []);
     for (const file of list) {
       if (state.draftImages.length >= MAX_IMAGES) {
@@ -3283,11 +3346,11 @@ input[type="password"]:focus {
         const resized = await resizeImage(file);
         state.draftImages.push({
           id: createId(),
-          url: URL.createObjectURL(resized.blob),
+          url: resized.dataUrl,      // 미리보기 겸 저장할 데이터
           path: '',
           w: resized.w,
           h: resized.h,
-          file: resized.blob,
+          data: resized.dataUrl,     // data 가 있으면 아직 저장 전
           name: file.name
         });
       } catch (err) {
@@ -3301,8 +3364,7 @@ input[type="password"]:focus {
   function removeDraftImage(imageId) {
     const target = state.draftImages.filter((img) => img.id === imageId)[0];
     if (!target) return;
-    if (target.file) URL.revokeObjectURL(target.url);
-    else if (target.path) state.removedImages.push(target.path);   // 저장할 때 Storage 에서 지운다
+    if (!target.data && target.path) state.removedImages.push(target.path);   // 저장할 때 함께 지운다
     state.draftImages = state.draftImages.filter((img) => img.id !== imageId);
     renderDraftImages();
   }
@@ -3329,7 +3391,6 @@ input[type="password"]:focus {
         } else {
           el.fTitle.value = '';
           el.fBody.value = '';
-          state.draftImages.forEach((img) => { if (img.file) URL.revokeObjectURL(img.url); });
           state.draftImages = [];
           renderDraftImages();
         }
@@ -3482,9 +3543,9 @@ input[type="password"]:focus {
       const figure = document.createElement('figure');
       figure.className = 'view-image';
       const picture = document.createElement('img');
-      picture.src = img.url;
       picture.alt = nickname + '님이 올린 사진';
       picture.loading = 'lazy';
+      resolveImageInto(picture, img);
       figure.appendChild(picture);
       el.viewImages.appendChild(figure);
     });
@@ -3547,10 +3608,9 @@ input[type="password"]:focus {
     state.draftType = wanted === 'free' ? 'scrum' : 'free';
     setDraftType(wanted, false);
 
-    el.imageHint.textContent = state.store.storageAvailable
-      ? '끌어다 놓거나 붙여넣기(Ctrl+V)도 됩니다. 최대 ' + MAX_IMAGES + '장.'
-      : '사진 저장소(Storage)가 준비되지 않아 사진을 넣을 수 없습니다.';
-    el.btnPickImage.disabled = !state.store.storageAvailable || state.draftImages.length >= MAX_IMAGES;
+    el.imageHint.textContent =
+      '끌어다 놓거나 붙여넣기(Ctrl+V)도 됩니다. 최대 ' + MAX_IMAGES + '장, 자동으로 줄여 저장합니다.';
+    el.btnPickImage.disabled = state.draftImages.length >= MAX_IMAGES;
 
     el.viewPane.hidden = true;
     el.editPane.hidden = false;
@@ -3577,7 +3637,6 @@ input[type="password"]:focus {
     state.modalMemoId = '';
     state.modalReturn = null;
     state.draftEvents = [];
-    state.draftImages.forEach((img) => { if (img.file) URL.revokeObjectURL(img.url); });
     state.draftImages = [];
     state.removedImages = [];
     state.baseline = '';
@@ -3675,26 +3734,28 @@ input[type="password"]:focus {
 
     setBusy(true);
     try {
-      // 자유 메모의 새 사진을 먼저 업로드한다
+      // 자유 메모의 새 사진을 먼저 따로 저장한다(메모 문서에는 참조만 남는다)
       if (memo.type === 'free') {
-        const uploaded = [];
+        const saved = [];
         for (const img of state.draftImages) {
-          if (!img.file) {
-            uploaded.push({ id: img.id, url: img.url, path: img.path, w: img.w, h: img.h });
+          if (!img.data) {
+            saved.push({ id: img.id, url: img.url, path: img.path, w: img.w, h: img.h });
             continue;
           }
-          el.sheetMeta.textContent = '사진 업로드 중… (' + (uploaded.length + 1) + '/' + state.draftImages.length + ')';
-          const result = await state.store.uploadImage(state.calendar.id, key, memoId, img.id, img.file);
-          uploaded.push({ id: img.id, url: result.url, path: result.path, w: img.w, h: img.h });
+          el.sheetMeta.textContent = '사진 저장 중… (' + (saved.length + 1) + '/' + state.draftImages.length + ')';
+          const result = await state.store.uploadImage(
+            state.calendar.id, key, memoId, img.id, img.data, { w: img.w, h: img.h });
+          imageCache.set(result.path, img.data);      // 바로 보이도록 캐시에 담아 둔다
+          saved.push({ id: img.id, url: result.url, path: result.path, w: img.w, h: img.h });
         }
-        memo.images = uploaded;
+        memo.images = saved;
       }
 
       await state.store.setMemo(state.calendar.id, key, memoId, memo);
 
       // 저장이 끝난 뒤 빠진 사진을 지운다
       for (const path of state.removedImages) {
-        if (path) await state.store.deleteImage(path);
+        if (path) await state.store.deleteImage(state.calendar.id, path);
       }
 
       state.pinnedMemoId = memoId;
@@ -3703,9 +3764,12 @@ input[type="password"]:focus {
       showToast(editing ? '메모를 수정했습니다.' : '메모를 붙였습니다.');
     } catch (err) {
       console.warn('저장 실패', err);
-      const uploading = memo.type === 'free' && state.draftImages.some((img) => img.file);
+      const uploading = memo.type === 'free' && state.draftImages.some((img) => img.data);
+      const denied = /permission|insufficient/i.test(String((err && err.code) || (err && err.message) || ''));
       showToast(uploading
-        ? '사진을 올리지 못했습니다. Firebase 콘솔에서 Storage 가 켜져 있는지 확인해 주세요.'
+        ? (denied
+          ? '사진 저장 권한이 없습니다. Firestore 규칙에 images 컬렉션 허용을 추가해 주세요.'
+          : '사진을 저장하지 못했습니다. 크기나 장수를 줄여 다시 시도해 주세요.')
         : friendlyError(err), 'error');
       el.sheetMeta.textContent = formatKoreanDate(fromKey(key)) + ' · ' + state.session.nickname +
         ' 이름으로 등록됩니다';
@@ -3731,7 +3795,7 @@ input[type="password"]:focus {
     try {
       await state.store.deleteMemo(state.calendar.id, key, memoId);
       for (const img of memo.images) {
-        if (img.path) await state.store.deleteImage(img.path);
+        if (img.path) await state.store.deleteImage(state.calendar.id, img.path);
       }
       state.modalReturn = { type: 'add' };
       closeModal(true);
