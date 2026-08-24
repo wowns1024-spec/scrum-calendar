@@ -793,6 +793,114 @@ input[type="password"]:focus {
 .mini-sep { color: #d1d5db; font-size: 11px; }
 
 /* =========================================================
+   설정 / 월정액
+   ========================================================= */
+.set-head-left { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.set-head-right { display: flex; align-items: center; gap: 8px; flex: none; }
+
+.set-menu { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.set-menu-btn {
+  appearance: none;
+  font: inherit;
+  width: 100%;
+  text-align: left;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.set-menu-btn:hover { background: #f1f3f6; }
+.set-menu-icon { flex: none; font-size: 20px; line-height: 1; }
+.set-menu-text { display: block; min-width: 0; }
+.set-menu-name { display: block; font-size: 14px; font-weight: 700; color: var(--text); }
+.set-menu-sub { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.set-menu-go { margin-left: auto; flex: none; color: var(--muted); font-size: 15px; }
+
+/* 월정액 목록 */
+.pay-group + .pay-group { margin-top: 18px; }
+.pay-group-title { margin: 0 0 8px; font-size: 12px; font-weight: 800; color: var(--muted); }
+.pay-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pay-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 10px 12px;
+}
+.pay-item.is-income { background: #f4fbf6; border-color: #d3edde; }
+.pay-mark { flex: none; font-size: 16px; line-height: 1; }
+.pay-main { flex: 1 1 auto; min-width: 0; }
+.pay-name { margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text); word-break: break-word; }
+.pay-lock { font-size: 11px; }
+.pay-sub { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); }
+.pay-money { flex: none; font-size: 13.5px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pay-money.is-income { color: #166534; }
+.pay-acts { flex: none; display: flex; gap: 4px; }
+.pay-act {
+  appearance: none; font: inherit;
+  font-size: 12px; font-weight: 700;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.pay-act:hover { background: var(--surface-2); }
+.pay-act.is-del { color: var(--red-dark); background: var(--red-soft); border-color: var(--red-line); }
+.pay-act.is-del:hover { background: #fee2e2; }
+.pay-empty { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* 달력 칸에 뜨는 월정액 칩 */
+.pays { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pay-chip {
+  display: flex; align-items: center; gap: 4px;
+  max-width: 100%;
+  font-size: 11px; line-height: 1.5;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--red-soft);
+  color: var(--red-dark);
+  border: 1px solid var(--red-line);
+}
+.pay-chip.is-income { background: #edfdf3; color: #166534; border-color: #bbf7d0; }
+.pay-chip-icon { flex: none; font-size: 9px; }
+.pay-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pay-chip-money { margin-left: auto; flex: none; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pay-chip.more {
+  background: transparent; border-color: transparent; color: var(--muted);
+  font-weight: 600; padding-left: 2px;
+}
+
+/* 하단 고정 수입 · 지출 */
+.fixed-sum {
+  margin-top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 18px;
+}
+.fx-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.fx-title { margin: 0; font-size: 15px; letter-spacing: -0.2px; }
+.fx-meta { margin: 0; font-size: 12px; color: var(--muted); }
+.fx-rows { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 10px; }
+.fx-row { display: flex; align-items: baseline; gap: 10px; }
+.fx-label {
+  flex: none;
+  font-size: 12px; font-weight: 800;
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: var(--red-soft); color: var(--red-dark);
+}
+.fx-row.is-income .fx-label { background: #edfdf3; color: #166534; }
+.fx-money { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.fx-sep { color: var(--line-strong); font-weight: 700; }
+.fx-empty { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+
+/* =========================================================
    타공판 게시판
    ========================================================= */
 .board {
@@ -1144,7 +1252,9 @@ input[type="password"]:focus {
   border-radius: 999px;
   transition: transform 0.18s cubic-bezier(0.2, 0.75, 0.3, 1);
 }
-.seg.is-free .seg-thumb { transform: translateX(calc(100% + 4px)); }
+/* is-free 는 메모 형식 토글, is-b 는 오른쪽 버튼이 켜진 여느 토글 */
+.seg.is-free .seg-thumb,
+.seg.is-b .seg-thumb { transform: translateX(calc(100% + 4px)); }
 
 .img-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .img-grid {
@@ -1413,6 +1523,18 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   .topbar-actions { width: 100%; justify-content: flex-start; }
   .page-foot { padding: 0 12px 26px; }
 
+  /* 칸이 좁아 한 줄에 다 못 넣는다. 금액이 잘려 보이면 잘못 읽히므로 두 줄로 나눈다. */
+  .pay-chip { font-size: 10px; padding: 1px 4px; gap: 0 3px; flex-wrap: wrap; }
+  .pay-chip-icon { font-size: 8px; }
+  /* basis 를 0 으로 둬야 이름이 길어도 아이콘과 같은 줄에 남는다 */
+  .pay-chip-name { flex: 1 1 0; }                 /* 첫 줄: 아이콘 + 항목 */
+  .pay-chip-money { flex: 1 0 100%; margin-left: 0; text-align: right; }   /* 둘째 줄: 금액 */
+  .pay-item { flex-wrap: wrap; }
+  .pay-acts { width: 100%; justify-content: flex-end; }
+  .fixed-sum { padding: 12px 14px; }
+  .fx-rows { gap: 8px 16px; }
+  .fx-money { font-size: 14px; }
+
   .board-head { padding: 12px 14px; }
   .board-date { font-size: 17px; }
   .trash { display: none; }          /* 목록 모드에서는 드래그가 없어 숨긴다 */
@@ -1523,6 +1645,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       <span class="mode-tag" id="modeTag" hidden>로컬 모드</span>
       <button type="button" class="icon-btn" id="btnSearch" aria-label="메모 검색">&#128269;</button>
       <button type="button" class="icon-btn" id="btnInvite" aria-label="초대 링크 복사">&#128279;</button>
+      <button type="button" class="icon-btn" id="btnSettings" aria-label="설정">&#9881;</button>
       <span class="who"><span class="dot" aria-hidden="true"></span><span id="whoName">닉네임</span></span>
       <button type="button" class="btn" id="btnLogout">로그아웃</button>
     </div>
@@ -1610,8 +1733,19 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       <span class="legend-item"><span class="paint-swatch" style="--swatch:#fee2e2;--swatch-ink:#991b1b" aria-hidden="true">휴</span> 공휴일</span>
       <span class="legend-item"><span class="paint-swatch" style="--swatch:#dbeafe;--swatch-ink:#1e40af" aria-hidden="true">발</span> 중간발표</span>
       <span class="legend-item"><span class="paint-swatch" style="--swatch:#fef3c7;--swatch-ink:#92400e" aria-hidden="true">D</span> D-DAY</span>
+      <span class="legend-item"><span class="pay-chip"><span class="pay-chip-icon" aria-hidden="true">&#128179;</span><span class="pay-chip-name">항목</span></span> 월정액 결제일</span>
     </div>
   </main>
+
+  <!-- 고정 수입 · 지출 (월정액을 등록한 사람에게만 보인다) -->
+  <section class="fixed-sum" id="fixedSum" hidden aria-labelledby="fixedSumTitle">
+    <div class="fx-head">
+      <h2 class="fx-title" id="fixedSumTitle">고정 수입 · 지출</h2>
+      <p class="fx-meta" id="fixedSumMeta"></p>
+    </div>
+    <div class="fx-rows" id="fixedSumRows"></div>
+    <p class="fx-empty" id="fixedSumEmpty" hidden>이 달에 결제되는 월정액이 없습니다.</p>
+  </section>
 </div>
 
 <!-- 하단 보조 기능 -->
@@ -1800,6 +1934,115 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 <div class="sbar-tip" id="scheduleTip" role="tooltip" hidden></div>
 
 <!-- =========================================================
+     설정 (메뉴 · 월정액 목록 · 월정액 등록/수정)
+     한 모달 안에서 화면만 바꿔 끼운다.
+     ========================================================= -->
+<div class="backdrop" id="settingsBackdrop" hidden>
+  <div class="sheet sheet-sm" id="settingsSheet" role="dialog" aria-modal="true"
+       aria-labelledby="settingsTitle" tabindex="-1">
+    <header class="sheet-head">
+      <div class="set-head-left">
+        <button type="button" class="icon-btn" id="btnSettingsBack" aria-label="뒤로" hidden>&#8592;</button>
+        <div>
+          <h2 class="sheet-title" id="settingsTitle">설정</h2>
+          <p class="sheet-meta" id="settingsMeta"></p>
+        </div>
+      </div>
+      <div class="set-head-right">
+        <button type="button" class="icon-btn" id="btnPayAdd" aria-label="월정액 추가" hidden>&#65291;</button>
+        <button type="button" class="icon-btn" id="btnSettingsClose" aria-label="닫기">&#10005;</button>
+      </div>
+    </header>
+
+    <div class="sheet-body">
+      <!-- 설정 메뉴 -->
+      <div class="pane" id="settingsMenu">
+        <ul class="set-menu" id="setMenu"></ul>
+      </div>
+
+      <!-- 월정액 목록 -->
+      <div class="pane" id="payListPane" hidden>
+        <div id="payList"></div>
+      </div>
+
+      <!-- 월정액 등록 / 수정 -->
+      <div class="pane" id="payFormPane" hidden>
+        <div class="field">
+          <label for="payTitle">항목</label>
+          <input type="text" id="payTitle" maxlength="60" placeholder="예) 넷플릭스" autocomplete="off" />
+        </div>
+
+        <fieldset class="field">
+          <legend>구분</legend>
+          <div class="seg" id="payKindSeg" role="radiogroup" aria-label="지출인지 수입인지">
+            <span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" class="seg-btn is-on" id="segPayExpense" role="radio"
+                    aria-checked="true" data-kind="expense">지출</button>
+            <button type="button" class="seg-btn" id="segPayIncome" role="radio"
+                    aria-checked="false" data-kind="income">수입</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend>날짜 지정</legend>
+          <div class="seg" id="payTermSeg" role="radiogroup" aria-label="기한이 있는지">
+            <span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" class="seg-btn is-on" id="segPayFixed" role="radio"
+                    aria-checked="true" data-term="fixed">기한 있음</button>
+            <button type="button" class="seg-btn" id="segPayForever" role="radio"
+                    aria-checked="false" data-term="forever">무기한</button>
+          </div>
+          <div class="date-range">
+            <label class="sr-only" for="payStart">시작일</label>
+            <input type="date" id="payStart" />
+            <span class="date-sep" id="payDateSep" aria-hidden="true">~</span>
+            <label class="sr-only" for="payEnd">종료일</label>
+            <input type="date" id="payEnd" />
+          </div>
+          <p class="hint" id="payDayHint"></p>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend>납부요금</legend>
+          <div class="seg" id="payCurSeg" role="radiogroup" aria-label="통화">
+            <span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" class="seg-btn is-on" id="segPayKrw" role="radio"
+                    aria-checked="true" data-currency="KRW">원화 &#8361;</button>
+            <button type="button" class="seg-btn" id="segPayUsd" role="radio"
+                    aria-checked="false" data-currency="USD">달러 $</button>
+          </div>
+          <label class="sr-only" for="payAmount">금액</label>
+          <input type="text" id="payAmount" inputmode="decimal" maxlength="18"
+                 placeholder="10,000" autocomplete="off" />
+        </fieldset>
+
+        <fieldset class="field">
+          <legend>공개 범위</legend>
+          <div class="seg" id="payVisSeg" role="radiogroup" aria-label="누구에게 보일지">
+            <span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" class="seg-btn is-on" id="segPayTeam" role="radio"
+                    aria-checked="true" data-visibility="team">팀 공개</button>
+            <button type="button" class="seg-btn" id="segPayPrivate" role="radio"
+                    aria-checked="false" data-visibility="private">나만 보기</button>
+          </div>
+          <p class="hint">
+            나만 보기로 두면 다른 팀원의 화면에는 보이지 않습니다.
+            다만 이 앱은 브라우저에서 확인하는 구조라 완전한 비밀은 아닙니다.
+          </p>
+        </fieldset>
+      </div>
+    </div>
+
+    <footer class="sheet-foot" id="payFormFoot" hidden>
+      <button type="button" class="btn danger" id="btnPayDelete">삭제</button>
+      <span class="foot-spacer"></span>
+      <button type="button" class="btn" id="btnPayCancel">취소</button>
+      <button type="button" class="btn primary" id="btnPaySave">저장</button>
+    </footer>
+  </div>
+</div>
+
+<!-- =========================================================
      팀원 프로필 (보기 / 편집)
      ========================================================= -->
 <div class="backdrop" id="profileBackdrop" hidden>
@@ -1959,6 +2202,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
                allow read: if request.auth != null;
                allow write: if request.auth != null;
              }
+             match /payments/{paymentId} {  // 월정액(정기결제)
+               allow read: if request.auth != null;
+               allow write: if request.auth != null;
+             }
+             // 월정액의 '나만 보기'는 화면에서 걸러 보여 주는 것이라
+             // 이 규칙만으로는 남이 문서를 읽는 것까지 막지 못한다.
              match /profiles/{userId} {      // 팀원 프로필(사진은 images 문서를 참조)
                allow read: if request.auth != null;
                allow write: if request.auth != null;
@@ -1991,6 +2240,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   const SESSION_KEY = 'scrum-calendar:session';
   const LOCAL_DB_KEY = 'scrum-calendar:localdb';
   const MAX_CELL_EVENTS = 2;
+  const MAX_CELL_PAYS = 2;
   const MAX_MEMO_EVENTS = 3;
   const MAX_COMMENT_LEN = 500;
   const MAX_IMAGES = 6;
@@ -2055,6 +2305,15 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     schedules: {},          // { 일정ID: 일정 }
     scheduleTarget: '',     // 수정 중인 일정 ID('' = 새 일정)
     scheduleColor: 'blue',
+    unsubscribePayments: null,
+    payments: {},           // { 결제ID: 월정액 }
+    paymentTarget: '',      // 수정 중인 월정액 ID('' = 새 항목)
+    paymentKind: 'expense', // 폼에서 고른 값들
+    paymentTerm: 'fixed',
+    paymentCurrency: 'KRW',
+    paymentVisibility: 'team',
+    settingsView: null,     // null(닫힘) | 'menu' | 'payments' | 'form'
+    settingsDown: false,
     paintColor: '',         // 색칠 대기 중인 색('' = 대기 아님)
     paintOpen: false,
     profiles: {},           // { 아이디: 프로필 }
@@ -2330,6 +2589,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     const calListeners = new Set();
     const profileListeners = new Set();
     const scheduleListeners = new Set();
+    const paymentListeners = new Set();
 
     function readDb() {
       try {
@@ -2342,10 +2602,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
           days: parsed.days && typeof parsed.days === 'object' ? parsed.days : {},
           images: parsed.images && typeof parsed.images === 'object' ? parsed.images : {},
           profiles: parsed.profiles && typeof parsed.profiles === 'object' ? parsed.profiles : {},
-          schedules: parsed.schedules && typeof parsed.schedules === 'object' ? parsed.schedules : {}
+          schedules: parsed.schedules && typeof parsed.schedules === 'object' ? parsed.schedules : {},
+          payments: parsed.payments && typeof parsed.payments === 'object' ? parsed.payments : {}
         };
       } catch (err) {
-        return { users: {}, calendars: {}, days: {}, images: {}, profiles: {}, schedules: {} };
+        return { users: {}, calendars: {}, days: {}, images: {}, profiles: {}, schedules: {}, payments: {} };
       }
     }
 
@@ -2386,6 +2647,13 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       });
     }
 
+    function notifyPayments() {
+      const db = readDb();
+      paymentListeners.forEach((listener) => {
+        listener.cb(Object.assign({}, (db.payments || {})[listener.calId] || {}));
+      });
+    }
+
     function collectRange(calId, start, end) {
       const db = readDb();
       const all = db.days[calId] || {};
@@ -2403,6 +2671,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       notifyCalendars();
       notifyProfiles();
       notifySchedules();
+      notifyPayments();
     });
 
     return {
@@ -2494,6 +2763,29 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         const db = readDb();
         cb(Object.assign({}, (db.schedules || {})[calId] || {}));
         return () => scheduleListeners.delete(listener);
+      },
+      async setPayment(calId, paymentId, payment) {
+        const db = readDb();
+        if (!db.payments) db.payments = {};
+        if (!db.payments[calId]) db.payments[calId] = {};
+        db.payments[calId][paymentId] = payment;
+        writeDb(db);
+        notifyPayments();
+      },
+      async deletePayment(calId, paymentId) {
+        const db = readDb();
+        if (db.payments && db.payments[calId]) {
+          delete db.payments[calId][paymentId];
+          writeDb(db);
+          notifyPayments();
+        }
+      },
+      subscribePayments(calId, cb) {
+        const listener = { calId: calId, cb: cb };
+        paymentListeners.add(listener);
+        const db = readDb();
+        cb(Object.assign({}, (db.payments || {})[calId] || {}));
+        return () => paymentListeners.delete(listener);
       },
       subscribeCalendar(calId, cb) {
         const listener = { calId: calId, cb: cb };
@@ -2677,6 +2969,20 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
           cb(result);
         }, (err) => console.warn('일정 구독 오류', err));
       },
+      async setPayment(calId, paymentId, payment) {
+        await setDoc(doc(db, 'calendars', calId, 'payments', paymentId), payment);
+      },
+      async deletePayment(calId, paymentId) {
+        await fsMod.deleteDoc(doc(db, 'calendars', calId, 'payments', paymentId));
+      },
+      // 월정액도 수가 많지 않으므로 전체를 구독하고 화면에서 걸러 쓴다
+      subscribePayments(calId, cb) {
+        return onSnapshot(collection(db, 'calendars', calId, 'payments'), (snapshot) => {
+          const result = {};
+          snapshot.forEach((docSnap) => { result[docSnap.id] = docSnap.data(); });
+          cb(result);
+        }, (err) => console.warn('월정액 구독 오류', err));
+      },
       // 팀원 프로필도 실시간으로 갱신한다
       subscribeProfiles(calId, cb) {
         return onSnapshot(collection(db, 'calendars', calId, 'profiles'), (snapshot) => {
@@ -2814,10 +3120,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       subscribeRange: store.subscribeRange.bind(store),
       subscribeCalendar: store.subscribeCalendar.bind(store),
       subscribeProfiles: store.subscribeProfiles.bind(store),
-      subscribeSchedules: store.subscribeSchedules.bind(store)
+      subscribeSchedules: store.subscribeSchedules.bind(store),
+      subscribePayments: store.subscribePayments.bind(store)
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
      'setGroundRules', 'setProfile', 'setDayColor', 'setSchedule', 'deleteSchedule',
+     'setPayment', 'deletePayment',
      'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
      'uploadImage', 'loadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
       guarded[key] = function () {
@@ -3052,12 +3360,15 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (state.unsubscribeCalendar) { state.unsubscribeCalendar(); state.unsubscribeCalendar = null; }
     if (state.unsubscribeProfiles) { state.unsubscribeProfiles(); state.unsubscribeProfiles = null; }
     if (state.unsubscribeSchedules) { state.unsubscribeSchedules(); state.unsubscribeSchedules = null; }
+    if (state.unsubscribePayments) { state.unsubscribePayments(); state.unsubscribePayments = null; }
     state.profiles = {};
     state.schedules = {};
+    state.payments = {};
     clearSession();
     state.calendar = null;
     state.days = {};
     el.app.hidden = true;
+    el.fixedSum.hidden = true;
     el.pageFoot.hidden = true;
     el.gate.hidden = false;
     switchAuthMode('login');
@@ -3105,6 +3416,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
     subscribeProfiles();
     subscribeSchedules();
+    subscribePayments();
     subscribeMonth();
     renderCalendar();
     cleanUrl();          // 합류가 끝났으니 주소에서 초대 파라미터를 지운다
@@ -3121,6 +3433,22 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       });
     } catch (err) {
       console.warn('일정 구독 실패', err);
+    }
+  }
+
+  // 월정액을 실시간으로 구독한다
+  function subscribePayments() {
+    if (!state.calendar) return;
+    if (state.unsubscribePayments) { state.unsubscribePayments(); state.unsubscribePayments = null; }
+    try {
+      state.unsubscribePayments = state.store.subscribePayments(state.calendar.id, (payments) => {
+        state.payments = payments || {};
+        renderCalendar();                       // 달력 칩과 하단 합계를 함께 갱신한다
+        // 목록을 열어 두었으면 그 자리에서 바로 반영한다(작성 중에는 두고 본다)
+        if (state.settingsView === 'payments') renderPayList();
+      });
+    } catch (err) {
+      console.warn('월정액 구독 실패', err);
     }
   }
 
@@ -3701,6 +4029,584 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   }
 
   /* =======================================================
+     설정 · 월정액 (정기결제)
+     ======================================================= */
+  const PAY_CURRENCIES = {
+    KRW: { sign: '₩', unit: '원', name: '원화', decimals: 0 },
+    USD: { sign: '$', unit: '달러', name: '달러', decimals: 2 }
+  };
+
+  const PAY_KINDS = {
+    expense: { name: '고정지출', short: '지출', icon: '💳' },
+    income:  { name: '고정수익', short: '수입', icon: '💰' }
+  };
+
+  // 설정 모달의 메뉴. 항목이 늘어나면 여기에 더한다.
+  const SETTINGS_MENU = [
+    { view: 'payments', icon: '💳', name: '월정액',
+      sub: '매달 나가는 요금과 들어오는 수입을 관리합니다' }
+  ];
+
+  function normalizePayment(raw, id) {
+    if (!raw || typeof raw !== 'object') return null;
+    const title = typeof raw.title === 'string' ? raw.title.trim().slice(0, MAX_TITLE_LEN) : '';
+    const start = typeof raw.start === 'string' && DATE_KEY_RE.test(raw.start) ? raw.start : '';
+    const amount = Number(raw.amount);
+    if (!title || !start || !isFinite(amount) || amount <= 0) return null;
+
+    const currency = PAY_CURRENCIES[raw.currency] ? raw.currency : 'KRW';
+    const term = raw.term === 'forever' ? 'forever' : 'fixed';
+    let end = typeof raw.end === 'string' && DATE_KEY_RE.test(raw.end) ? raw.end : '';
+    if (term === 'forever') end = '';
+    else if (!end || end < start) end = start;      // 기한형인데 종료일이 이상하면 시작일에 맞춘다
+
+    const day = Math.floor(Number(raw.day));
+    return {
+      id: id,
+      title: title,
+      kind: raw.kind === 'income' ? 'income' : 'expense',
+      amount: PAY_CURRENCIES[currency].decimals ? amount : Math.round(amount),
+      currency: currency,
+      day: day >= 1 && day <= 31 ? day : fromKey(start).getDate(),
+      term: term,
+      start: start,
+      end: end,
+      visibility: raw.visibility === 'private' ? 'private' : 'team',
+      authorId: cleanName(raw.authorId),
+      nickname: cleanName(raw.nickname),
+      createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : '',
+      updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : ''
+    };
+  }
+
+  // 그 달에 요금이 빠져나가는 날. 해당 없으면 ''
+  function paymentDateInMonth(payment, year, month) {
+    const day = Math.min(payment.day, daysInMonth(year, month));  // 말일이 없는 달은 마지막 날로 당긴다
+    const key = toKey(new Date(year, month, day));
+    if (key < payment.start) return '';
+    if (payment.term === 'fixed' && payment.end && key > payment.end) return '';
+    return key;
+  }
+
+  // 지금 사용자가 볼 수 있는 것만 추린다(팀 공개 + 내가 등록한 것)
+  function visiblePayments() {
+    const me = myId();
+    return Object.keys(state.payments)
+      .map((id) => normalizePayment(state.payments[id], id))
+      .filter((payment) => payment && (payment.visibility === 'team' || payment.authorId === me))
+      .sort((a, b) => a.day - b.day || a.title.localeCompare(b.title, 'ko'));
+  }
+
+  const groupDigits = (text) => text.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  function formatAmount(amount, currency) {
+    const cur = PAY_CURRENCIES[currency] || PAY_CURRENCIES.KRW;
+    const parts = (cur.decimals ? amount.toFixed(cur.decimals) : String(Math.round(amount))).split('.');
+    parts[0] = groupDigits(parts[0]);
+    return parts.join('.');
+  }
+
+  // 화면에 그릴 때: ₩17,000 · $9.99
+  const formatMoney = (amount, currency) =>
+    (PAY_CURRENCIES[currency] || PAY_CURRENCIES.KRW).sign + formatAmount(amount, currency);
+
+  // 화면 낭독기가 읽을 때: 17,000원 · 9.99달러
+  const formatMoneySpoken = (amount, currency) =>
+    formatAmount(amount, currency) + (PAY_CURRENCIES[currency] || PAY_CURRENCIES.KRW).unit;
+
+  // '10,000' -> 10000. 숫자로 볼 수 없으면 NaN
+  function parseMoney(text) {
+    const cleaned = String(text == null ? '' : text).replace(/,/g, '').trim();
+    if (!/^\d+(\.\d+)?$/.test(cleaned)) return NaN;
+    const value = Number(cleaned);
+    return isFinite(value) ? value : NaN;
+  }
+
+  // 입력 중인 글자를 다듬는다(달러일 때만 소수점 허용, 소수점 아래는 두 자리까지)
+  function formatAmountInput(raw, allowDecimal) {
+    let text = String(raw);
+    if (!allowDecimal) {
+      // 소수점을 못 쓰는 통화면 소수점 아래를 '지우는' 게 아니라 '잘라낸다'.
+      // 그냥 지우면 1,234.56 이 123,456 이 되어 자릿수가 밀린다.
+      const cut = text.indexOf('.');
+      if (cut >= 0) text = text.slice(0, cut);
+      text = text.replace(/[^0-9]/g, '');
+    } else {
+      text = text.replace(/[^0-9.]/g, '');
+    }
+
+    const dot = text.indexOf('.');
+    let frac = '';
+    if (dot >= 0) {
+      frac = text.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+      text = text.slice(0, dot);
+    }
+    const whole = groupDigits(text.replace(/^0+(?=\d)/, ''));
+    return dot >= 0 ? whole + '.' + frac : whole;
+  }
+
+  // 앞에서부터 숫자를 count 개 지난 자리
+  function caretAfterDigits(text, count) {
+    if (count <= 0) return 0;
+    let seen = 0;
+    for (let i = 0; i < text.length; i += 1) {
+      if (text[i] >= '0' && text[i] <= '9') {
+        seen += 1;
+        if (seen === count) return i + 1;
+      }
+    }
+    return text.length;
+  }
+
+  // 값을 통째로 갈아끼우면 커서가 맨 뒤로 튄다.
+  // 커서 앞의 숫자 개수를 세어 두었다가 같은 자리로 되돌린다.
+  function handleAmountInput() {
+    const input = el.payAmount;
+    const caret = input.selectionStart == null ? input.value.length : input.selectionStart;
+    const before = input.value.slice(0, caret).replace(/[^0-9]/g, '').length;
+    const next = formatAmountInput(input.value, state.paymentCurrency === 'USD');
+    if (next === input.value) return;
+    input.value = next;
+    const at = caretAfterDigits(next, before);
+    try { input.setSelectionRange(at, at); } catch (err) { /* 자리 옮기기를 막는 입력칸은 넘어간다 */ }
+  }
+
+  // 화면에 보이는 날짜를 훑어 '그 날 결제되는 월정액' 목록을 만든다
+  function buildPaymentMap(days) {
+    const map = {};
+    const list = visiblePayments();
+    if (!list.length) return map;
+
+    const done = {};
+    days.forEach((date) => {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const tag = year + '-' + month;
+      if (done[tag]) return;                    // 같은 달은 한 번만 계산한다
+      done[tag] = true;
+      list.forEach((payment) => {
+        const key = paymentDateInMonth(payment, year, month);
+        if (!key) return;
+        if (!map[key]) map[key] = [];
+        map[key].push(payment);
+      });
+    });
+    return map;
+  }
+
+  /* ---------- 설정 모달 ---------- */
+  function renderSetMenu() {
+    el.setMenu.replaceChildren();
+    SETTINGS_MENU.forEach((item) => {
+      const row = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'set-menu-btn';
+      button.dataset.view = item.view;
+
+      const icon = document.createElement('span');
+      icon.className = 'set-menu-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = item.icon;
+
+      const text = document.createElement('span');
+      text.className = 'set-menu-text';
+      const name = document.createElement('span');
+      name.className = 'set-menu-name';
+      name.textContent = item.name;
+      const sub = document.createElement('span');
+      sub.className = 'set-menu-sub';
+      sub.textContent = item.sub;
+      text.appendChild(name);
+      text.appendChild(sub);
+
+      const go = document.createElement('span');
+      go.className = 'set-menu-go';
+      go.setAttribute('aria-hidden', 'true');
+      go.textContent = '›';
+
+      button.appendChild(icon);
+      button.appendChild(text);
+      button.appendChild(go);
+      row.appendChild(button);
+      el.setMenu.appendChild(row);
+    });
+  }
+
+  function buildPayRow(payment, editable) {
+    const item = document.createElement('li');
+    item.className = 'pay-item' + (payment.kind === 'income' ? ' is-income' : '');
+
+    const mark = document.createElement('span');
+    mark.className = 'pay-mark';
+    mark.setAttribute('aria-hidden', 'true');
+    mark.textContent = PAY_KINDS[payment.kind].icon;
+
+    const main = document.createElement('div');
+    main.className = 'pay-main';
+
+    const name = document.createElement('p');
+    name.className = 'pay-name';
+    name.textContent = payment.title;                 // XSS 방지
+    if (payment.visibility === 'private') {
+      const lock = document.createElement('span');
+      lock.className = 'pay-lock';
+      lock.title = '나만 보기';
+      lock.textContent = ' 🔒';
+      name.appendChild(lock);
+    }
+
+    const parts = [PAY_KINDS[payment.kind].short, '매월 ' + payment.day + '일'];
+    parts.push(payment.term === 'forever' ? '무기한' : payment.start + ' ~ ' + payment.end);
+    if (!editable && payment.nickname) parts.push(payment.nickname);
+    const sub = document.createElement('p');
+    sub.className = 'pay-sub';
+    sub.textContent = parts.join(' · ');
+
+    main.appendChild(name);
+    main.appendChild(sub);
+
+    const money = document.createElement('span');
+    money.className = 'pay-money' + (payment.kind === 'income' ? ' is-income' : '');
+    money.textContent = formatMoney(payment.amount, payment.currency);
+    money.setAttribute('aria-label', formatMoneySpoken(payment.amount, payment.currency));
+
+    item.appendChild(mark);
+    item.appendChild(main);
+    item.appendChild(money);
+
+    if (editable) {                                   // 등록자에게만 손댈 버튼을 준다
+      const acts = document.createElement('span');
+      acts.className = 'pay-acts';
+      [{ act: 'edit', label: '수정', extra: '' },
+       { act: 'delete', label: '삭제', extra: ' is-del' }].forEach((spec) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pay-act' + spec.extra;
+        button.dataset.act = spec.act;
+        button.dataset.id = payment.id;
+        button.textContent = spec.label;
+        button.setAttribute('aria-label', payment.title + ' ' + spec.label);
+        acts.appendChild(button);
+      });
+      item.appendChild(acts);
+    }
+    return item;
+  }
+
+  function renderPayList() {
+    const me = myId();
+    const list = visiblePayments();
+    el.payList.replaceChildren();
+
+    if (!list.length) {
+      const empty = document.createElement('p');
+      empty.className = 'pay-empty';
+      empty.textContent = '아직 등록한 월정액이 없습니다. 오른쪽 위 + 버튼으로 추가해 보세요.';
+      el.payList.appendChild(empty);
+      return;
+    }
+
+    [{ title: '내 월정액', rows: list.filter((p) => p.authorId === me), editable: true },
+     { title: '팀 공개', rows: list.filter((p) => p.authorId !== me), editable: false }
+    ].forEach((group) => {
+      if (!group.rows.length) return;
+      const box = document.createElement('section');
+      box.className = 'pay-group';
+
+      const title = document.createElement('h3');
+      title.className = 'pay-group-title';
+      title.textContent = group.title + ' ' + group.rows.length + '건';
+
+      const listNode = document.createElement('ul');
+      listNode.className = 'pay-list';
+      group.rows.forEach((payment) => listNode.appendChild(buildPayRow(payment, group.editable)));
+
+      box.appendChild(title);
+      box.appendChild(listNode);
+      el.payList.appendChild(box);
+    });
+  }
+
+  // 보고 있는 달에 실제로 결제되는 것만 더한다. 통화는 환산하지 않고 따로 센다.
+  function renderFixedSummary() {
+    if (!state.session || !state.calendar) return;
+
+    const list = visiblePayments();
+    if (!list.length) { el.fixedSum.hidden = true; return; }   // 등록한 사람에게만 보인다
+
+    const year = state.viewYear;
+    const month = state.viewMonth;
+    const totals = { expense: {}, income: {} };
+    let hit = 0;
+
+    list.forEach((payment) => {
+      if (!paymentDateInMonth(payment, year, month)) return;
+      const bucket = totals[payment.kind];
+      bucket[payment.currency] = (bucket[payment.currency] || 0) + payment.amount;
+      hit += 1;
+    });
+
+    el.fixedSum.hidden = false;
+    el.fixedSumMeta.textContent = year + '년 ' + (month + 1) + '월 기준';
+    el.fixedSumEmpty.hidden = hit > 0;
+    el.fixedSumRows.replaceChildren();
+
+    Object.keys(PAY_KINDS).forEach((kind) => {
+      const bucket = totals[kind];
+      const used = Object.keys(PAY_CURRENCIES).filter((cur) => bucket[cur]);
+      if (!used.length) return;                 // 등록된 통화만 보여 준다
+
+      const row = document.createElement('div');
+      row.className = 'fx-row' + (kind === 'income' ? ' is-income' : '');
+
+      const label = document.createElement('span');
+      label.className = 'fx-label';
+      label.textContent = PAY_KINDS[kind].name;
+      row.appendChild(label);
+
+      used.forEach((cur, at) => {
+        if (at) {
+          const sep = document.createElement('span');
+          sep.className = 'fx-sep';
+          sep.setAttribute('aria-hidden', 'true');
+          sep.textContent = '·';
+          row.appendChild(sep);
+        }
+        const money = document.createElement('span');
+        money.className = 'fx-money';
+        money.textContent = formatMoney(bucket[cur], cur);
+        money.setAttribute('aria-label',
+          PAY_KINDS[kind].name + ' ' + formatMoneySpoken(bucket[cur], cur));
+        row.appendChild(money);
+      });
+      el.fixedSumRows.appendChild(row);
+    });
+  }
+
+  function setSettingsView(view) {
+    state.settingsView = view;
+    const isMenu = view === 'menu';
+    const isList = view === 'payments';
+    const isForm = view === 'form';
+
+    el.settingsMenu.hidden = !isMenu;
+    el.payListPane.hidden = !isList;
+    el.payFormPane.hidden = !isForm;
+    el.payFormFoot.hidden = !isForm;
+    el.btnSettingsBack.hidden = isMenu;
+    el.btnPayAdd.hidden = !isList;
+
+    if (isMenu) {
+      el.settingsTitle.textContent = '설정';
+      el.settingsMeta.textContent = '';
+      renderSetMenu();
+    } else if (isList) {
+      el.settingsTitle.textContent = '월정액';
+      el.settingsMeta.textContent = '매달 나가는 요금과 들어오는 수입';
+      renderPayList();
+    } else {
+      el.settingsTitle.textContent = state.paymentTarget ? '월정액 수정' : '월정액 등록';
+      el.settingsMeta.textContent = '결제일마다 달력에 표시됩니다.';
+    }
+  }
+
+  function openSettings() {
+    state.paymentTarget = '';
+    setSettingsView('menu');
+    el.settingsBackdrop.hidden = false;
+    document.body.classList.add('is-locked');
+    el.app.setAttribute('aria-hidden', 'true');
+    el.settingsSheet.focus();
+  }
+
+  function closeSettings() {
+    el.settingsBackdrop.hidden = true;
+    state.settingsView = null;
+    state.paymentTarget = '';
+    if (!state.boardKey) document.body.classList.remove('is-locked');
+    el.app.removeAttribute('aria-hidden');
+    el.btnSettings.focus();
+  }
+
+  // 뒤로: 폼에서는 목록으로, 목록에서는 메뉴로
+  function settingsBack() {
+    if (state.settingsView === 'form') {
+      state.paymentTarget = '';
+      setSettingsView('payments');
+      el.btnPayAdd.focus();
+    } else {
+      setSettingsView('menu');
+      const first = el.setMenu.querySelector('.set-menu-btn');
+      if (first) first.focus();
+    }
+  }
+
+  /* ---------- 월정액 등록 / 수정 폼 ---------- */
+  // 두 칸짜리 토글. 오른쪽 버튼이 켜지면 is-b 로 손잡이를 옮긴다.
+  function paintSeg(seg, buttons, value, key) {
+    let onSecond = false;
+    buttons.forEach((button, at) => {
+      const on = button.dataset[key] === value;
+      button.classList.toggle('is-on', on);
+      button.setAttribute('aria-checked', on ? 'true' : 'false');
+      if (on && at === 1) onSecond = true;
+    });
+    seg.classList.toggle('is-b', onSecond);
+  }
+
+  function updatePayDayHint() {
+    const start = el.payStart.value;
+    if (!DATE_KEY_RE.test(start)) { el.payDayHint.textContent = '시작일을 골라 주세요.'; return; }
+
+    const day = fromKey(start).getDate();
+    let text = '매월 ' + day + '일에 결제됩니다.';
+    if (day >= 29) text += ' 말일이 없는 달은 그 달 마지막 날에 표시됩니다.';
+
+    const end = el.payEnd.value;
+    if (state.paymentTerm === 'fixed' && DATE_KEY_RE.test(end) && end !== start) {
+      const from = start <= end ? start : end;
+      const to = start <= end ? end : start;
+      text += ' · ' + formatRange(from, to);
+    } else if (state.paymentTerm === 'forever') {
+      text += ' 종료일 없이 계속 표시됩니다.';
+    }
+    el.payDayHint.textContent = text;
+  }
+
+  function paintPayForm() {
+    paintSeg(el.payKindSeg, [el.segPayExpense, el.segPayIncome], state.paymentKind, 'kind');
+    paintSeg(el.payTermSeg, [el.segPayFixed, el.segPayForever], state.paymentTerm, 'term');
+    paintSeg(el.payCurSeg, [el.segPayKrw, el.segPayUsd], state.paymentCurrency, 'currency');
+    paintSeg(el.payVisSeg, [el.segPayTeam, el.segPayPrivate], state.paymentVisibility, 'visibility');
+
+    const forever = state.paymentTerm === 'forever';
+    el.payEnd.hidden = forever;
+    el.payDateSep.hidden = forever;
+    el.payAmount.placeholder = state.paymentCurrency === 'USD' ? '9.99' : '10,000';
+    updatePayDayHint();
+  }
+
+  function openPayForm(paymentId) {
+    const editing = !!paymentId && state.payments[paymentId];
+    const payment = editing ? normalizePayment(state.payments[paymentId], paymentId) : null;
+    if (editing && (!payment || payment.authorId !== myId())) return;   // 등록자만 수정
+
+    state.paymentTarget = editing ? paymentId : '';
+    state.paymentKind = payment ? payment.kind : 'expense';
+    state.paymentTerm = payment ? payment.term : 'fixed';
+    state.paymentCurrency = payment ? payment.currency : 'KRW';
+    state.paymentVisibility = payment ? payment.visibility : 'team';
+
+    const base = state.focusKey && DATE_KEY_RE.test(state.focusKey)
+      ? state.focusKey : toKey(startOfToday());
+
+    el.payTitle.value = payment ? payment.title : '';
+    el.payStart.value = payment ? payment.start : base;
+    el.payEnd.value = payment && payment.end ? payment.end : base;
+    el.payAmount.value = payment ? formatAmount(payment.amount, payment.currency) : '';
+    el.btnPayDelete.hidden = !editing;
+
+    setSettingsView('form');
+    paintPayForm();
+    el.payTitle.focus();
+  }
+
+  async function handleSavePayment() {
+    if (state.busy) return;
+
+    const title = el.payTitle.value.trim().slice(0, MAX_TITLE_LEN);
+    if (!title) { showToast('항목을 입력해 주세요.', 'error'); el.payTitle.focus(); return; }
+
+    const start = el.payStart.value;
+    if (!DATE_KEY_RE.test(start)) {
+      showToast('시작일을 골라 주세요.', 'error');
+      el.payStart.focus();
+      return;
+    }
+
+    let end = '';
+    if (state.paymentTerm === 'fixed') {
+      if (!DATE_KEY_RE.test(el.payEnd.value)) {
+        showToast('종료일을 골라 주세요.', 'error');
+        el.payEnd.focus();
+        return;
+      }
+      end = el.payEnd.value;
+    }
+    // 거꾸로 고르면 자동으로 바꿔 준다
+    const from = (!end || start <= end) ? start : end;
+    const to = (!end || start <= end) ? end : start;
+
+    const amount = parseMoney(el.payAmount.value);
+    if (!isFinite(amount) || amount <= 0) {
+      showToast('납부요금을 숫자로 적어 주세요.', 'error');
+      el.payAmount.focus();
+      return;
+    }
+
+    const editing = !!state.paymentTarget;
+    const paymentId = editing ? state.paymentTarget : 'pay_' + randomHex(8);
+    const previous = editing ? normalizePayment(state.payments[paymentId], paymentId) : null;
+
+    const payload = {
+      title: title,
+      kind: state.paymentKind,
+      amount: state.paymentCurrency === 'USD' ? Math.round(amount * 100) / 100 : Math.round(amount),
+      currency: state.paymentCurrency,
+      day: fromKey(from).getDate(),
+      term: state.paymentTerm,
+      start: from,
+      end: to,
+      visibility: state.paymentVisibility,
+      authorId: myId(),
+      nickname: state.session.nickname,
+      createdAt: (previous && previous.createdAt) || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setBusy(true);
+    try {
+      await state.store.setPayment(state.calendar.id, paymentId, payload);
+      state.paymentTarget = '';
+      setSettingsView('payments');
+      el.btnPayAdd.focus();
+      showToast(editing ? '월정액을 수정했습니다.' : '월정액을 등록했습니다.');
+    } catch (err) {
+      console.warn('월정액 저장 실패', err);
+      const denied = /permission|insufficient/i.test(String((err && err.code) || (err && err.message) || ''));
+      showToast(denied
+        ? '월정액 저장 권한이 없습니다. Firestore 규칙에 payments 컬렉션 허용을 추가해 주세요.'
+        : friendlyError(err), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeletePayment(paymentId) {
+    const id = paymentId || state.paymentTarget;
+    if (!id || state.busy) return;
+    const payment = normalizePayment(state.payments[id], id);
+    if (!payment || payment.authorId !== myId()) return;      // 등록자만 삭제
+
+    if (!window.confirm("'" + payment.title + "' 월정액을 삭제할까요?")) return;
+
+    setBusy(true);
+    try {
+      await state.store.deletePayment(state.calendar.id, id);
+      state.paymentTarget = '';
+      setSettingsView('payments');
+      el.btnPayAdd.focus();
+      showToast('월정액을 삭제했습니다.');
+    } catch (err) {
+      console.warn('월정액 삭제 실패', err);
+      showToast(friendlyError(err), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* =======================================================
      팀원 프로필
      ======================================================= */
   const MAX_EXTRAS = 5;
@@ -4214,9 +5120,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     return badge;
   }
 
-  function buildCell(date, todayKey, focusKey) {
+  function buildCell(date, todayKey, focusKey, payMap) {
     const key = toKey(date);
     const info = daySummary(key);
+    const pays = (payMap && payMap[key]) || [];
     const inMonth = date.getMonth() === state.viewMonth && date.getFullYear() === state.viewYear;
     const isToday = key === todayKey;
     const dow = date.getDay();
@@ -4262,6 +5169,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     } else {
       labelParts.push('메모 없음');
     }
+    pays.forEach((payment) => {
+      labelParts.push(PAY_KINDS[payment.kind].name + ' ' + payment.title + ' ' +
+        formatMoneySpoken(payment.amount, payment.currency));
+    });
     cell.setAttribute('aria-label', labelParts.join(', '));
 
     const top = document.createElement('div');
@@ -4308,6 +5219,46 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       cell.appendChild(chips);
     }
 
+    // 그 날 빠져나가거나 들어오는 월정액
+    if (pays.length) {
+      const payWrap = document.createElement('div');
+      payWrap.className = 'pays';
+      payWrap.setAttribute('aria-hidden', 'true');
+
+      pays.slice(0, MAX_CELL_PAYS).forEach((payment) => {
+        const chip = document.createElement('span');
+        chip.className = 'pay-chip is-' + payment.kind;
+        // 칸이 좁아 이름이 줄면 마우스를 올려 전체를 볼 수 있게 한다
+        chip.title = payment.title + ' ' + formatMoney(payment.amount, payment.currency);
+
+        const icon = document.createElement('span');
+        icon.className = 'pay-chip-icon';
+        icon.textContent = PAY_KINDS[payment.kind].icon;
+
+        const name = document.createElement('span');
+        name.className = 'pay-chip-name';
+        name.textContent = payment.title;        // XSS 방지
+
+        const money = document.createElement('span');
+        money.className = 'pay-chip-money';
+        money.textContent = formatMoney(payment.amount, payment.currency);
+
+        chip.appendChild(icon);
+        chip.appendChild(name);
+        chip.appendChild(money);
+        payWrap.appendChild(chip);
+      });
+
+      const restPays = pays.length - MAX_CELL_PAYS;
+      if (restPays > 0) {
+        const more = document.createElement('span');
+        more.className = 'pay-chip more';
+        more.textContent = '+' + restPays + '건';
+        payWrap.appendChild(more);
+      }
+      cell.appendChild(payWrap);
+    }
+
     return cell;
   }
 
@@ -4350,6 +5301,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
     const days = buildMonthDays(state.viewYear, state.viewMonth);
     const weeks = buildScheduleWeeks(days);        // 빠른 일정 줄을 주 단위로 계산
+    const payMap = buildPaymentMap(days);          // 날짜별 월정액
     const frag = document.createDocumentFragment();
     frag.appendChild(buildWeekdayRow());
 
@@ -4362,7 +5314,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       row.setAttribute('role', 'row');
 
       days.slice(i, i + 7).forEach((date) => {
-        const cell = buildCell(date, todayKey, focusKey);
+        const cell = buildCell(date, todayKey, focusKey, payMap);
         if (laneSpace) {
           // 줄이 지나가는 만큼 칸 안에 자리를 비워 둔다
           const spacer = document.createElement('div');
@@ -4394,6 +5346,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
     el.grid.replaceChildren(frag);
     renderSummary();
+    renderFixedSummary();
   }
 
   const findCell = (key) => el.grid.querySelector('.cell[data-key="' + key + '"]');
@@ -6362,6 +7315,81 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       else if (event.key === 'Tab') trapTab(el.scheduleSheet, event);
     });
 
+    // 설정 · 월정액
+    el.btnSettings.addEventListener('click', openSettings);
+    el.btnSettingsClose.addEventListener('click', closeSettings);
+    el.btnSettingsBack.addEventListener('click', settingsBack);
+    el.btnPayCancel.addEventListener('click', settingsBack);
+    el.btnPayAdd.addEventListener('click', () => openPayForm(''));
+    el.btnPaySave.addEventListener('click', handleSavePayment);
+    el.btnPayDelete.addEventListener('click', () => handleDeletePayment(''));
+
+    el.setMenu.addEventListener('click', (event) => {
+      const button = event.target.closest('.set-menu-btn');
+      if (!button) return;
+      if (button.dataset.view === 'payments') {
+        setSettingsView('payments');
+        el.btnPayAdd.focus();
+      }
+    });
+
+    el.payList.addEventListener('click', (event) => {
+      const button = event.target.closest('.pay-act');
+      if (!button) return;
+      if (button.dataset.act === 'edit') openPayForm(button.dataset.id);
+      else handleDeletePayment(button.dataset.id);
+    });
+
+    // 폼의 토글 네 개를 한자리에서 받는다
+    [{ node: () => el.payKindSeg, key: 'kind', field: 'paymentKind' },
+     { node: () => el.payTermSeg, key: 'term', field: 'paymentTerm' },
+     { node: () => el.payCurSeg, key: 'currency', field: 'paymentCurrency' },
+     { node: () => el.payVisSeg, key: 'visibility', field: 'paymentVisibility' }
+    ].forEach((spec) => {
+      const seg = spec.node();
+      seg.addEventListener('click', (event) => {
+        const button = event.target.closest('.seg-btn');
+        if (!button || button.dataset[spec.key] === state[spec.field]) return;
+        state[spec.field] = button.dataset[spec.key];
+        // 원화로 바꾸면 소수점 이하는 버린다
+        if (spec.key === 'currency') {
+          el.payAmount.value = formatAmountInput(el.payAmount.value, state.paymentCurrency === 'USD');
+        }
+        paintPayForm();
+        button.focus();
+      });
+      seg.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const buttons = Array.prototype.slice.call(seg.querySelectorAll('.seg-btn'));
+        const at = buttons.findIndex((button) => button.dataset[spec.key] === state[spec.field]);
+        const next = buttons[(at + (event.key === 'ArrowRight' ? 1 : buttons.length - 1)) % buttons.length];
+        next.click();
+      });
+    });
+
+    el.payTitle.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); handleSavePayment(); }
+    });
+    el.payAmount.addEventListener('input', handleAmountInput);
+    el.payAmount.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); handleSavePayment(); }
+    });
+    el.payStart.addEventListener('change', updatePayDayHint);
+    el.payEnd.addEventListener('change', updatePayDayHint);
+
+    el.settingsBackdrop.addEventListener('mousedown', (event) => {
+      state.settingsDown = event.target === el.settingsBackdrop;
+    });
+    el.settingsBackdrop.addEventListener('click', (event) => {
+      if (event.target === el.settingsBackdrop && state.settingsDown) closeSettings();
+      state.settingsDown = false;
+    });
+    el.settingsBackdrop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeSettings(); }
+      else if (event.key === 'Tab') trapTab(el.settingsSheet, event);
+    });
+
     // 일정 줄: 마우스를 올리면 내용, 등록자만 클릭해서 수정
     el.grid.addEventListener('pointerover', (event) => {
       const bar = event.target.closest('.sbar');
@@ -6631,7 +7659,17 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       'splash', 'gate', 'setupNotice', 'inviteNotice', 'authError',
       'loginForm', 'loginId', 'loginPw', 'btnLogin', 'btnGoSignup',
       'signupForm', 'signupId', 'signupPw', 'signupNick', 'btnSignup', 'btnGoLogin',
-      'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'whoName', 'btnLogout',
+      'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'btnSettings', 'whoName', 'btnLogout',
+      'settingsBackdrop', 'settingsSheet', 'settingsTitle', 'settingsMeta',
+      'btnSettingsBack', 'btnSettingsClose', 'btnPayAdd',
+      'settingsMenu', 'setMenu', 'payListPane', 'payList', 'payFormPane', 'payFormFoot',
+      'payTitle', 'payKindSeg', 'segPayExpense', 'segPayIncome',
+      'payTermSeg', 'segPayFixed', 'segPayForever',
+      'payStart', 'payDateSep', 'payEnd', 'payDayHint',
+      'payCurSeg', 'segPayKrw', 'segPayUsd', 'payAmount',
+      'payVisSeg', 'segPayTeam', 'segPayPrivate',
+      'btnPayDelete', 'btnPayCancel', 'btnPaySave',
+      'fixedSum', 'fixedSumMeta', 'fixedSumRows', 'fixedSumEmpty',
       'teamLabel', 'profileStrip', 'inviteBox', 'inviteInput', 'btnInviteClose',
       'btnPaint', 'paintPop', 'paintOptions', 'paintBanner', 'paintBannerText', 'btnPaintCancel',
       'btnQuickSchedule', 'scheduleBackdrop', 'scheduleSheet', 'scheduleTitle', 'scheduleMeta',
