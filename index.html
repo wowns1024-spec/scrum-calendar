@@ -793,6 +793,62 @@ input[type="password"]:focus {
 .mini-sep { color: #d1d5db; font-size: 11px; }
 
 /* =========================================================
+   알림
+   ========================================================= */
+.alarm-wrap { position: relative; display: inline-flex; flex: none; }
+.alarm-dot {
+  position: absolute;
+  top: -4px; right: -4px;
+  min-width: 17px; height: 17px;
+  padding: 0 4px;
+  display: grid; place-items: center;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 1;
+  border: 2px solid var(--bg);
+  border-radius: 999px;
+}
+
+.alarm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.alarm-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  font: inherit;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.alarm-item:hover { background: #f1f3f6; }
+/* 안 읽은 알림은 색만이 아니라 표식과 라벨로도 구분한다 */
+.alarm-item.is-new { background: var(--blue-soft); border-color: var(--blue-line); }
+.alarm-item.is-new:hover { background: #e5eefe; }
+.alarm-mark { flex: none; font-size: 15px; line-height: 1.3; }
+.alarm-main { flex: 1 1 auto; min-width: 0; }
+.alarm-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.alarm-who { font-size: 13.5px; font-weight: 700; color: var(--text); }
+.alarm-new-tag {
+  flex: none;
+  font-size: 10px; font-weight: 800;
+  color: var(--blue-deep);
+  background: #dbeafe;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+.alarm-text {
+  margin: 3px 0 0;
+  font-size: 12.5px; color: var(--text-2);
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  word-break: break-word;
+}
+.alarm-when { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+.alarm-empty { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* =========================================================
    설정 / 월정액
    ========================================================= */
 .set-head-left { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
@@ -1535,6 +1591,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   .fx-rows { gap: 8px 16px; }
   .fx-money { font-size: 14px; }
 
+  .alarm-item { padding: 9px 10px; gap: 8px; }
+  .alarm-who { font-size: 12.5px; }
+  .alarm-dot { min-width: 16px; height: 16px; font-size: 9px; }
+
   .board-head { padding: 12px 14px; }
   .board-date { font-size: 17px; }
   .trash { display: none; }          /* 목록 모드에서는 드래그가 없어 숨긴다 */
@@ -1645,6 +1705,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       <span class="mode-tag" id="modeTag" hidden>로컬 모드</span>
       <button type="button" class="icon-btn" id="btnSearch" aria-label="메모 검색">&#128269;</button>
       <button type="button" class="icon-btn" id="btnInvite" aria-label="초대 링크 복사">&#128279;</button>
+      <span class="alarm-wrap">
+        <button type="button" class="icon-btn" id="btnAlarm" aria-label="알림">&#128276;</button>
+        <span class="alarm-dot" id="alarmDot" aria-hidden="true" hidden></span>
+      </span>
       <button type="button" class="icon-btn" id="btnSettings" aria-label="설정">&#9881;</button>
       <span class="who"><span class="dot" aria-hidden="true"></span><span id="whoName">닉네임</span></span>
       <button type="button" class="btn" id="btnLogout">로그아웃</button>
@@ -2043,6 +2107,58 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 </div>
 
 <!-- =========================================================
+     알림 (내 글에 달린 댓글)
+     ========================================================= -->
+<div class="backdrop" id="alarmBackdrop" hidden>
+  <div class="sheet sheet-sm" id="alarmSheet" role="dialog" aria-modal="true"
+       aria-labelledby="alarmTitle" tabindex="-1">
+    <header class="sheet-head">
+      <div>
+        <h2 class="sheet-title" id="alarmTitle">알림</h2>
+        <p class="sheet-meta" id="alarmMeta"></p>
+      </div>
+      <button type="button" class="icon-btn" id="btnAlarmClose" aria-label="닫기">&#10005;</button>
+    </header>
+
+    <div class="sheet-body">
+      <ul class="alarm-list" id="alarmList"></ul>
+      <p class="alarm-empty" id="alarmEmpty" hidden>아직 받은 알림이 없습니다.</p>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     초대받은 달력에서 쓸 닉네임 묻기
+     달력마다 닉네임을 따로 둘 수 있으므로 합류할 때 한 번 물어본다.
+     ========================================================= -->
+<div class="backdrop" id="nickBackdrop" hidden>
+  <div class="sheet sheet-sm" id="nickSheet" role="dialog" aria-modal="true"
+       aria-labelledby="nickTitle" tabindex="-1">
+    <header class="sheet-head">
+      <div>
+        <h2 class="sheet-title" id="nickTitle">이 달력에서 쓸 닉네임</h2>
+        <p class="sheet-meta" id="nickMeta"></p>
+      </div>
+    </header>
+
+    <div class="sheet-body">
+      <div class="field">
+        <label for="nickInput">닉네임</label>
+        <input type="text" id="nickInput" maxlength="20" autocomplete="off" placeholder="예) 김싸피" />
+        <p class="hint">달력마다 다른 닉네임을 쓸 수 있습니다. 이 달력에 남기는 메모는 이 이름으로 등록됩니다.</p>
+      </div>
+      <p class="error-text" id="nickError" hidden></p>
+    </div>
+
+    <footer class="sheet-foot">
+      <span class="foot-spacer"></span>
+      <button type="button" class="btn" id="btnNickCancel">취소</button>
+      <button type="button" class="btn primary" id="btnNickOk">이 이름으로 시작</button>
+    </footer>
+  </div>
+</div>
+
+<!-- =========================================================
      팀원 프로필 (보기 / 편집)
      ========================================================= -->
 <div class="backdrop" id="profileBackdrop" hidden>
@@ -2208,6 +2324,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
              }
              // 월정액의 '나만 보기'는 화면에서 걸러 보여 주는 것이라
              // 이 규칙만으로는 남이 문서를 읽는 것까지 막지 못한다.
+             match /inbox/{userId} {        // 알림함(받는 사람 아이디가 문서 ID)
+               allow read: if request.auth != null;
+               allow write: if request.auth != null;
+             }
+             // 남이 내 알림함에 알림을 넣어야 하므로 쓰기를 열어 둔다.
+             // 그래서 남이 내 알림을 지울 수도 있다(schedules·payments 와 같은 수준의 한계).
              match /profiles/{userId} {      // 팀원 프로필(사진은 images 문서를 참조)
                allow read: if request.auth != null;
                allow write: if request.auth != null;
@@ -2241,6 +2363,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   const LOCAL_DB_KEY = 'scrum-calendar:localdb';
   const MAX_CELL_EVENTS = 2;
   const MAX_CELL_PAYS = 2;
+  const MAX_INBOX_ITEMS = 50;                 // 알림함에 남겨 둘 최대 개수
   const MAX_MEMO_EVENTS = 3;
   const MAX_COMMENT_LEN = 500;
   const MAX_IMAGES = 6;
@@ -2265,7 +2388,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   const DRAG_THRESHOLD = 5;
   const MAX_SEARCH_RESULTS = 60;
   const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
-  const WEEKDAY_HEADERS = ['월', '화', '수', '목', '금', '토', '일'];
+  const WEEKDAY_HEADERS = ['일', '월', '화', '수', '목', '금', '토'];
   const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
   const ID_RE = /^[A-Za-z0-9_-]{2,20}$/;
   const MAX_TEXT_LEN = 4000;
@@ -2314,6 +2437,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     paymentVisibility: 'team',
     settingsView: null,     // null(닫힘) | 'menu' | 'payments' | 'form'
     settingsDown: false,
+    unsubscribeInbox: null,
+    inbox: { items: [], readAt: '' },   // 알림함
+    alarmDown: false,
+    alarmBaseReadAt: '',               // 목록을 연 순간의 읽음 시각(표식을 고정하기 위해)
+    pendingMemoOpen: null,              // 알림에서 열려고 기다리는 { key, memoId }
+    pendingMemoTimer: null,
     paintColor: '',         // 색칠 대기 중인 색('' = 대기 아님)
     paintOpen: false,
     profiles: {},           // { 아이디: 프로필 }
@@ -2590,6 +2719,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     const profileListeners = new Set();
     const scheduleListeners = new Set();
     const paymentListeners = new Set();
+    const inboxListeners = new Set();
 
     function readDb() {
       try {
@@ -2603,10 +2733,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
           images: parsed.images && typeof parsed.images === 'object' ? parsed.images : {},
           profiles: parsed.profiles && typeof parsed.profiles === 'object' ? parsed.profiles : {},
           schedules: parsed.schedules && typeof parsed.schedules === 'object' ? parsed.schedules : {},
-          payments: parsed.payments && typeof parsed.payments === 'object' ? parsed.payments : {}
+          payments: parsed.payments && typeof parsed.payments === 'object' ? parsed.payments : {},
+          inbox: parsed.inbox && typeof parsed.inbox === 'object' ? parsed.inbox : {}
         };
       } catch (err) {
-        return { users: {}, calendars: {}, days: {}, images: {}, profiles: {}, schedules: {}, payments: {} };
+        return { users: {}, calendars: {}, days: {}, images: {}, profiles: {}, schedules: {}, payments: {}, inbox: {} };
       }
     }
 
@@ -2654,6 +2785,14 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       });
     }
 
+    function notifyInbox() {
+      const db = readDb();
+      inboxListeners.forEach((listener) => {
+        const box = ((db.inbox || {})[listener.calId] || {})[listener.userId];
+        listener.cb(box && typeof box === 'object' ? Object.assign({}, box) : { items: [], readAt: '' });
+      });
+    }
+
     function collectRange(calId, start, end) {
       const db = readDb();
       const all = db.days[calId] || {};
@@ -2672,6 +2811,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       notifyProfiles();
       notifySchedules();
       notifyPayments();
+      notifyInbox();
     });
 
     return {
@@ -2786,6 +2926,41 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         const db = readDb();
         cb(Object.assign({}, (db.payments || {})[calId] || {}));
         return () => paymentListeners.delete(listener);
+      },
+      async pushInbox(calId, userId, item) {
+        const db = readDb();
+        if (!db.inbox) db.inbox = {};
+        if (!db.inbox[calId]) db.inbox[calId] = {};
+        const box = db.inbox[calId][userId] || { items: [], readAt: '' };
+        box.items = (Array.isArray(box.items) ? box.items : []).concat([item]);
+        db.inbox[calId][userId] = box;
+        writeDb(db);
+        notifyInbox();
+      },
+      async setInboxRead(calId, userId, readAt) {
+        const db = readDb();
+        if (!db.inbox) db.inbox = {};
+        if (!db.inbox[calId]) db.inbox[calId] = {};
+        const box = db.inbox[calId][userId] || { items: [], readAt: '' };
+        box.readAt = readAt;
+        db.inbox[calId][userId] = box;
+        writeDb(db);
+        notifyInbox();
+      },
+      async trimInbox(calId, userId, items) {
+        const db = readDb();
+        if (!db.inbox || !db.inbox[calId] || !db.inbox[calId][userId]) return;
+        db.inbox[calId][userId].items = items;
+        writeDb(db);
+        notifyInbox();
+      },
+      subscribeInbox(calId, userId, cb) {
+        const listener = { calId: calId, userId: userId, cb: cb };
+        inboxListeners.add(listener);
+        const db = readDb();
+        const box = ((db.inbox || {})[calId] || {})[userId];
+        cb(box && typeof box === 'object' ? Object.assign({}, box) : { items: [], readAt: '' });
+        return () => inboxListeners.delete(listener);
       },
       subscribeCalendar(calId, cb) {
         const listener = { calId: calId, cb: cb };
@@ -2983,6 +3158,26 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
           cb(result);
         }, (err) => console.warn('월정액 구독 오류', err));
       },
+      // 알림함은 받는 사람 아이디를 문서 ID 로 쓴다.
+      // 컬렉션 질의를 쓰지 않으므로 Firestore 복합 색인을 따로 만들 필요가 없다.
+      async pushInbox(calId, userId, item) {
+        await setDoc(doc(db, 'calendars', calId, 'inbox', userId),
+          { items: fsMod.arrayUnion(item) }, { merge: true });
+      },
+      async setInboxRead(calId, userId, readAt) {
+        await setDoc(doc(db, 'calendars', calId, 'inbox', userId),
+          { readAt: readAt }, { merge: true });
+      },
+      async trimInbox(calId, userId, items) {
+        await setDoc(doc(db, 'calendars', calId, 'inbox', userId),
+          { items: items }, { merge: true });
+      },
+      subscribeInbox(calId, userId, cb) {
+        return onSnapshot(doc(db, 'calendars', calId, 'inbox', userId), (snap) => {
+          const data = snap.exists() ? snap.data() : null;
+          cb(data && typeof data === 'object' ? data : { items: [], readAt: '' });
+        }, (err) => console.warn('알림 구독 오류', err));
+      },
       // 팀원 프로필도 실시간으로 갱신한다
       subscribeProfiles(calId, cb) {
         return onSnapshot(collection(db, 'calendars', calId, 'profiles'), (snapshot) => {
@@ -3121,11 +3316,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       subscribeCalendar: store.subscribeCalendar.bind(store),
       subscribeProfiles: store.subscribeProfiles.bind(store),
       subscribeSchedules: store.subscribeSchedules.bind(store),
-      subscribePayments: store.subscribePayments.bind(store)
+      subscribePayments: store.subscribePayments.bind(store),
+      subscribeInbox: store.subscribeInbox.bind(store)
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
      'setGroundRules', 'setProfile', 'setDayColor', 'setSchedule', 'deleteSchedule',
-     'setPayment', 'deletePayment',
+     'setPayment', 'deletePayment', 'pushInbox', 'setInboxRead', 'trimInbox',
      'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
      'uploadImage', 'loadImage', 'deleteImage', 'fetchAllDays', 'writeDays'].forEach((key) => {
       guarded[key] = function () {
@@ -3240,7 +3436,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         if (!calendarId) return;
       }
 
-      saveSession({ userId: user.id, nickname: user.nickname, calendarId: calendarId });
+      // 닉네임은 달력마다 다를 수 있다. 실제 값은 enterCalendar() 에서 그 달력 기준으로 맞춘다.
+      saveSession({ userId: user.id, nickname: cleanName(user.nickname), calendarId: calendarId });
       el.loginPw.value = '';
       await enterCalendar();
     } catch (err) {
@@ -3328,6 +3525,71 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     return Object.keys(members).some((uid) => uid !== myId && members[uid] === nickname);
   }
 
+  // 그 달력에서 쓰는 닉네임. 없으면 사용자 기본 닉네임으로 떨어진다.
+  function nicknameInCalendar(calendar, userId, fallback) {
+    const members = (calendar && calendar.members) || {};
+    return cleanName(members[userId]) || cleanName(fallback);
+  }
+
+  // 세션 닉네임을 지금 달력의 것으로 맞춘다. 화면 표시도 함께 갱신한다.
+  function syncSessionNickname(calendar) {
+    if (!state.session) return;
+    const nickname = nicknameInCalendar(calendar, state.session.userId, state.session.nickname);
+    if (nickname && nickname !== state.session.nickname) {
+      saveSession(Object.assign({}, state.session, { nickname: nickname }));
+    }
+    el.whoName.textContent = nickname || state.session.nickname;
+  }
+
+  // 초대받은 달력에서 쓸 닉네임을 물어본다. 취소하면 빈 문자열.
+  function askCalendarNickname(calendar, userId, suggested) {
+    return new Promise((resolve) => {
+      const showError = (message) => {
+        el.nickError.hidden = !message;
+        el.nickError.textContent = message || '';
+      };
+
+      const finish = (value) => {
+        el.btnNickOk.removeEventListener('click', onOk);
+        el.btnNickCancel.removeEventListener('click', onCancel);
+        el.nickBackdrop.removeEventListener('keydown', onKey);
+        el.nickBackdrop.hidden = true;
+        showError('');
+        if (!state.boardKey) document.body.classList.remove('is-locked');
+        resolve(value);
+      };
+
+      const onOk = () => {
+        const name = cleanName(el.nickInput.value);
+        if (!name) { showError('닉네임을 입력해 주세요.'); el.nickInput.focus(); return; }
+        if (nicknameTaken(calendar, name, userId)) {
+          showError("이 달력에는 '" + name + "' 닉네임을 쓰는 사람이 이미 있습니다.");
+          el.nickInput.select();
+          return;
+        }
+        finish(name);
+      };
+      const onCancel = () => finish('');
+      const onKey = (event) => {
+        if (event.key === 'Escape') { event.preventDefault(); onCancel(); }
+        else if (event.key === 'Enter') { event.preventDefault(); onOk(); }
+        else if (event.key === 'Tab') trapTab(el.nickSheet, event);
+      };
+
+      el.nickMeta.textContent = "'" + (calendar.name || '초대받은 달력') + "' 에서 쓸 이름입니다.";
+      el.nickInput.value = cleanName(suggested);
+      showError('');
+      el.btnNickOk.addEventListener('click', onOk);
+      el.btnNickCancel.addEventListener('click', onCancel);
+      el.nickBackdrop.addEventListener('keydown', onKey);
+
+      el.nickBackdrop.hidden = false;
+      document.body.classList.add('is-locked');
+      el.nickInput.focus();
+      el.nickInput.select();
+    });
+  }
+
   // 초대 링크로 들어온 달력에 합류한다. 실패하면 빈 문자열을 반환.
   async function joinInvitedCalendar(user) {
     const calendar = await state.store.getCalendar(state.pendingInvite);
@@ -3342,13 +3604,16 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     );
     if (!ok) { state.pendingInvite = ''; return user.calendarId; }
 
-    if (nicknameTaken(calendar, user.nickname, user.id)) {
-      showAuthError("이 달력에는 '" + user.nickname + "' 닉네임을 쓰는 사람이 이미 있습니다.");
-      state.pendingInvite = '';
-      return '';
+    // 예전에 쓰던 달력으로 돌아온 경우에는 묻지 않고 그때 쓴 닉네임을 되살린다
+    const already = cleanName((calendar.members || {})[user.id]);
+    let nickname = already;
+    if (!nickname) {
+      nickname = await askCalendarNickname(calendar, user.id, user.nickname);
+      // 취소하면 원래 쓰던 달력에 그대로 머문다
+      if (!nickname) { state.pendingInvite = ''; return user.calendarId; }
+      await state.store.addMember(calendar.id, user.id, nickname);
     }
 
-    await state.store.addMember(calendar.id, user.id, user.nickname);
     await state.store.updateUser(user.id, { calendarId: calendar.id });
     state.pendingInvite = '';
     return calendar.id;
@@ -3361,6 +3626,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (state.unsubscribeProfiles) { state.unsubscribeProfiles(); state.unsubscribeProfiles = null; }
     if (state.unsubscribeSchedules) { state.unsubscribeSchedules(); state.unsubscribeSchedules = null; }
     if (state.unsubscribePayments) { state.unsubscribePayments(); state.unsubscribePayments = null; }
+    if (state.unsubscribeInbox) { state.unsubscribeInbox(); state.unsubscribeInbox = null; }
+    state.inbox = { items: [], readAt: '' };
+    clearPendingMemo();
+    renderAlarmBadge();
     state.profiles = {};
     state.schedules = {};
     state.payments = {};
@@ -3396,6 +3665,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     state.unsubscribeCalendar = state.store.subscribeCalendar(calendar.id, (fresh) => {
       state.calendar = fresh;
       el.calendarName.textContent = fresh.name || '팀 달력';
+      syncSessionNickname(fresh);      // 이 달력에서 쓰는 이름이 바뀌면 따라간다
       renderProfiles();
       if (el.groundEdit.hidden) renderGroundRules();   // 편집 중이면 건드리지 않는다
     });
@@ -3404,7 +3674,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     el.app.hidden = false;
     el.pageFoot.hidden = false;
     el.modeTag.hidden = state.mode !== 'local';
-    el.whoName.textContent = session.nickname;
+    syncSessionNickname(calendar);     // 달력별 닉네임을 세션과 화면에 맞춘다
     el.calendarName.textContent = calendar.name || '팀 달력';
     renderProfiles();
     renderGroundRules();
@@ -3417,6 +3687,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     subscribeProfiles();
     subscribeSchedules();
     subscribePayments();
+    subscribeInbox();
     subscribeMonth();
     renderCalendar();
     cleanUrl();          // 합류가 끝났으니 주소에서 초대 파라미터를 지운다
@@ -3483,6 +3754,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         // 드래그 중에는 다시 그리지 않고, 끝난 뒤에 반영한다
         if (state.drag) { state.boardDirty = true; return; }
         if (state.boardKey) renderBoard();
+        consumePendingMemo();      // 알림에서 넘어온 메모가 있으면 이제 열 수 있다
         if (state.modalMode === 'view' && state.boardKey) refreshViewIfNeeded();
       });
     } catch (err) {
@@ -4026,6 +4298,225 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     } finally {
       setBusy(false);
     }
+  }
+
+  /* =======================================================
+     알림 (내 글에 달린 댓글)
+     ======================================================= */
+  const inboxItems = () => {
+    const raw = state.inbox && Array.isArray(state.inbox.items) ? state.inbox.items : [];
+    return raw
+      .map(normalizeInboxItem)
+      .filter(Boolean)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));   // 최신 순
+  };
+
+  function normalizeInboxItem(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const dateKey = typeof raw.dateKey === 'string' && DATE_KEY_RE.test(raw.dateKey) ? raw.dateKey : '';
+    const memoId = typeof raw.memoId === 'string' ? raw.memoId : '';
+    if (!dateKey || !memoId) return null;
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id : createId(),
+      type: raw.type === 'comment' ? 'comment' : 'comment',
+      actorId: cleanName(raw.actorId),
+      actorNickname: cleanName(raw.actorNickname),
+      dateKey: dateKey,
+      memoId: memoId,
+      excerpt: typeof raw.excerpt === 'string' ? raw.excerpt.slice(0, 60) : '',
+      createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : ''
+    };
+  }
+
+  // 읽음 시각보다 나중에 온 것만 '안 읽음'. 항목마다 플래그를 두지 않는다.
+  const readAtNow = () =>
+    (state.inbox && typeof state.inbox.readAt === 'string') ? state.inbox.readAt : '';
+
+  const unreadAgainst = (item, readAt) =>
+    !readAt || (!!item.createdAt && item.createdAt > readAt);
+
+  // 배지는 지금 기준으로 센다
+  const isUnread = (item) => unreadAgainst(item, readAtNow());
+
+  // 목록의 표식은 '열던 순간' 기준으로 고정한다.
+  // 열자마자 읽음 처리를 하는데, 그 값으로 다시 그리면 무엇이 새 알림이었는지 알 수 없다.
+  const wasUnread = (item) => unreadAgainst(item, state.alarmBaseReadAt);
+
+  const unreadCount = () => inboxItems().filter(isUnread).length;
+
+  function renderAlarmBadge() {
+    if (!el.alarmDot) return;
+    const count = unreadCount();
+    el.alarmDot.hidden = count === 0;
+    el.alarmDot.textContent = count > 9 ? '9+' : String(count);
+    el.btnAlarm.setAttribute('aria-label', count ? '알림 ' + count + '개' : '알림');
+  }
+
+  // '3분 전' 처럼 짧게. 하루가 넘으면 날짜로 적는다.
+  function formatWhen(iso) {
+    const then = new Date(iso);
+    if (isNaN(then.getTime())) return '';
+    const diff = Date.now() - then.getTime();
+    if (diff < 60000) return '방금';
+    if (diff < 3600000) return Math.floor(diff / 60000) + '분 전';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + '시간 전';
+    return formatUpdatedAt(iso);
+  }
+
+  function buildAlarmRow(item) {
+    const row = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'alarm-item' + (wasUnread(item) ? ' is-new' : '');
+    button.dataset.dateKey = item.dateKey;
+    button.dataset.memoId = item.memoId;
+
+    const mark = document.createElement('span');
+    mark.className = 'alarm-mark';
+    mark.setAttribute('aria-hidden', 'true');
+    mark.textContent = '💬';
+
+    const main = document.createElement('span');
+    main.className = 'alarm-main';
+
+    const head = document.createElement('span');
+    head.className = 'alarm-head';
+    const who = document.createElement('span');
+    who.className = 'alarm-who';
+    // 닉네임은 그 달력의 현재 이름을 먼저 쓴다
+    who.textContent = displayName(item.actorId, item.actorNickname) + '님이 댓글을 남겼습니다';
+    head.appendChild(who);
+    if (wasUnread(item)) {
+      const tag = document.createElement('span');
+      tag.className = 'alarm-new-tag';
+      tag.textContent = '안 읽음';
+      head.appendChild(tag);
+    }
+
+    const text = document.createElement('p');
+    text.className = 'alarm-text';
+    text.textContent = item.excerpt;              // XSS 방지
+
+    const when = document.createElement('p');
+    when.className = 'alarm-when';
+    const date = fromKey(item.dateKey);
+    when.textContent = (date.getMonth() + 1) + '월 ' + date.getDate() + '일 메모 · ' +
+      formatWhen(item.createdAt);
+
+    main.appendChild(head);
+    main.appendChild(text);
+    main.appendChild(when);
+
+    button.appendChild(mark);
+    button.appendChild(main);
+    row.appendChild(button);
+    return row;
+  }
+
+  function renderAlarmList() {
+    const items = inboxItems();
+    el.alarmList.replaceChildren();
+    el.alarmEmpty.hidden = items.length > 0;
+    el.alarmMeta.textContent = items.length ? items.length + '개' : '';
+    items.forEach((item) => el.alarmList.appendChild(buildAlarmRow(item)));
+  }
+
+  function subscribeInbox() {
+    if (!state.calendar || !state.session) return;
+    if (state.unsubscribeInbox) { state.unsubscribeInbox(); state.unsubscribeInbox = null; }
+    try {
+      state.unsubscribeInbox = state.store.subscribeInbox(state.calendar.id, myId(), (box) => {
+        state.inbox = box && typeof box === 'object' ? box : { items: [], readAt: '' };
+        renderAlarmBadge();
+        if (!el.alarmBackdrop.hidden) renderAlarmList();
+      });
+    } catch (err) {
+      console.warn('알림 구독 실패', err);
+    }
+  }
+
+  // 내 메모에 남이 댓글을 달면 알림을 남긴다. 실패해도 댓글 등록은 그대로 둔다.
+  async function notifyComment(dateKey, memoId, memo, text) {
+    if (!memo || !memo.authorId || memo.authorId === myId()) return;   // 내 글에 내가 단 댓글은 알리지 않는다
+    try {
+      await state.store.pushInbox(state.calendar.id, memo.authorId, {
+        id: 'ntf_' + randomHex(8),
+        type: 'comment',
+        actorId: myId(),
+        actorNickname: displayName(myId(), state.session.nickname),
+        dateKey: dateKey,
+        memoId: memoId,
+        excerpt: text.slice(0, 60),
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      // 댓글은 이미 저장됐다. 알림 실패로 사용자를 놀라게 하지 않는다.
+      console.warn('알림 저장 실패', err);
+    }
+  }
+
+  async function openAlarm() {
+    state.alarmBaseReadAt = readAtNow();     // 표식 기준을 먼저 붙든다
+    renderAlarmList();
+    el.alarmBackdrop.hidden = false;
+    document.body.classList.add('is-locked');
+    el.app.setAttribute('aria-hidden', 'true');
+    el.alarmSheet.focus();
+
+    // 열었으면 읽은 것으로 두고, 오래된 알림은 이 참에 정리한다
+    const items = inboxItems();
+    if (!items.length) return;
+    try {
+      await state.store.setInboxRead(state.calendar.id, myId(), new Date().toISOString());
+      if (items.length > MAX_INBOX_ITEMS) {
+        await state.store.trimInbox(state.calendar.id, myId(), items.slice(0, MAX_INBOX_ITEMS));
+      }
+    } catch (err) {
+      console.warn('알림 읽음 처리 실패', err);
+    }
+  }
+
+  function closeAlarm() {
+    el.alarmBackdrop.hidden = true;
+    if (!state.boardKey) document.body.classList.remove('is-locked');
+    el.app.removeAttribute('aria-hidden');
+    el.btnAlarm.focus();
+  }
+
+  /* ---------- 알림에서 해당 메모로 이동 ---------- */
+  // 다른 달의 알림이면 setView() 가 구독을 다시 걸고 데이터는 나중에 도착한다.
+  // 그래서 열 대상을 적어 두고, 데이터가 온 뒤에 소진한다.
+  function clearPendingMemo() {
+    state.pendingMemoOpen = null;
+    if (state.pendingMemoTimer) {
+      window.clearTimeout(state.pendingMemoTimer);
+      state.pendingMemoTimer = null;
+    }
+  }
+
+  function consumePendingMemo() {
+    const want = state.pendingMemoOpen;
+    if (!want || state.boardKey !== want.key) return;
+    if (!hasMemo(want.key, want.memoId)) return;
+    clearPendingMemo();
+    openMemoView(want.memoId);
+  }
+
+  function goToMemo(dateKey, memoId) {
+    if (!DATE_KEY_RE.test(dateKey) || !memoId) return;
+    closeAlarm();
+    clearPendingMemo();
+    state.pendingMemoOpen = { key: dateKey, memoId: memoId };
+
+    // 데이터가 끝내 오지 않으면(지워진 메모 등) 마냥 기다리지 않는다
+    state.pendingMemoTimer = window.setTimeout(() => {
+      if (!state.pendingMemoOpen) return;
+      clearPendingMemo();
+      showToast('메모를 찾을 수 없습니다. 지워졌을 수 있습니다.', 'error');
+    }, 3000);
+
+    openBoard(dateKey);
+    consumePendingMemo();          // 같은 달이면 이 자리에서 바로 열린다
   }
 
   /* =======================================================
@@ -5065,7 +5556,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
      ======================================================= */
   function buildMonthDays(year, month) {
     const first = new Date(year, month, 1);
-    const offset = (first.getDay() + 6) % 7;
+    const offset = first.getDay();          // 일요일이 첫 칸
+
     const total = Math.ceil((offset + daysInMonth(year, month)) / 7) * 7;
     const days = [];
     for (let i = 0; i < total; i += 1) days.push(new Date(year, month, 1 - offset + i));
@@ -5078,7 +5570,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     row.setAttribute('role', 'row');
     WEEKDAY_HEADERS.forEach((name, index) => {
       const cell = document.createElement('div');
-      cell.className = 'wd' + (index === 5 ? ' sat' : (index === 6 ? ' sun' : ''));
+      cell.className = 'wd' + (index === 0 ? ' sun' : (index === 6 ? ' sat' : ''));
       cell.setAttribute('role', 'columnheader');
       cell.setAttribute('abbr', name + '요일');
       cell.textContent = name;
@@ -5484,6 +5976,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   function closeBoard() {
     const key = state.boardKey;
     if (!key) return;
+    clearPendingMemo();
 
     el.app.classList.remove('is-zoomed');
     el.app.removeAttribute('aria-hidden');
@@ -6628,6 +7121,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       return;
     }
 
+    const memo = getMemo(key, memoId);        // 알림을 받을 사람을 여기서 정한다
     const comment = {
       id: createId(),
       authorId: myId(),
@@ -6639,6 +7133,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     setBusy(true);
     try {
       await state.store.addComment(state.calendar.id, key, memoId, comment);
+      await notifyComment(key, memoId, memo, text);
       el.fComment.value = '';
       el.fComment.focus();
     } catch (err) {
@@ -7146,7 +7641,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     if (!cell) return;
 
     const date = fromKey(cell.dataset.key);
-    const dowIndex = (date.getDay() + 6) % 7;
+    const dowIndex = date.getDay();         // 일요일이 첫 칸
     let next = null;
 
     switch (event.key) {
@@ -7313,6 +7808,26 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     el.scheduleBackdrop.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); closeScheduleEditor(); }
       else if (event.key === 'Tab') trapTab(el.scheduleSheet, event);
+    });
+
+    // 알림
+    el.btnAlarm.addEventListener('click', openAlarm);
+    el.btnAlarmClose.addEventListener('click', closeAlarm);
+    el.alarmList.addEventListener('click', (event) => {
+      const button = event.target.closest('.alarm-item');
+      if (!button) return;
+      goToMemo(button.dataset.dateKey, button.dataset.memoId);
+    });
+    el.alarmBackdrop.addEventListener('mousedown', (event) => {
+      state.alarmDown = event.target === el.alarmBackdrop;
+    });
+    el.alarmBackdrop.addEventListener('click', (event) => {
+      if (event.target === el.alarmBackdrop && state.alarmDown) closeAlarm();
+      state.alarmDown = false;
+    });
+    el.alarmBackdrop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeAlarm(); }
+      else if (event.key === 'Tab') trapTab(el.alarmSheet, event);
     });
 
     // 설정 · 월정액
@@ -7660,6 +8175,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       'loginForm', 'loginId', 'loginPw', 'btnLogin', 'btnGoSignup',
       'signupForm', 'signupId', 'signupPw', 'signupNick', 'btnSignup', 'btnGoLogin',
       'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'btnSettings', 'whoName', 'btnLogout',
+      'btnAlarm', 'alarmDot', 'alarmBackdrop', 'alarmSheet', 'alarmTitle', 'alarmMeta',
+      'btnAlarmClose', 'alarmList', 'alarmEmpty',
+      'nickBackdrop', 'nickSheet', 'nickTitle', 'nickMeta', 'nickInput', 'nickError',
+      'btnNickCancel', 'btnNickOk',
       'settingsBackdrop', 'settingsSheet', 'settingsTitle', 'settingsMeta',
       'btnSettingsBack', 'btnSettingsClose', 'btnPayAdd',
       'settingsMenu', 'setMenu', 'payListPane', 'payList', 'payFormPane', 'payFormFoot',
