@@ -31,6 +31,9 @@
   --amber-line: #fde68a;
   --amber-ink: #92400e;
   --board-bg: #eceae4;
+  /* 타공판 구멍 무늬. 판 표면과 캔버스가 같은 값을 써야 경계에서 어긋나지 않는다. */
+  --peg-dots: radial-gradient(circle 3.4px at 50% 50%, rgba(17, 24, 39, 0.30) 0 40%,
+    rgba(17, 24, 39, 0.14) 62%, rgba(255, 255, 255, 0.72) 80%, transparent 84%);
   --radius: 12px;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
   --zoom-in: 320ms cubic-bezier(0.2, 0.75, 0.3, 1);
@@ -1044,16 +1047,22 @@ input[type="password"]:focus {
   -webkit-overflow-scrolling: touch;
   padding: 26px 20px 60px;
   background-color: var(--board-bg);
-  background-image:
-    radial-gradient(circle 3.4px at 50% 50%, rgba(17, 24, 39, 0.30) 0 40%,
-      rgba(17, 24, 39, 0.14) 62%, rgba(255, 255, 255, 0.72) 80%, transparent 84%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(0, 0, 0, 0.05));
+  background-image: var(--peg-dots), linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(0, 0, 0, 0.05));
   background-size: 28px 28px, 100% 100%;
   background-position: 0 0, 0 0;
 }
-/* 자유 배치에서는 구멍 무늬를 캔버스가 직접 그린다.
-   메모 좌표와 원점이 같아야 압정이 구멍에 정확히 꽂힌다. */
-.board-surface.is-plain { background-image: linear-gradient(180deg, rgba(255,255,255,0.3), rgba(0,0,0,0.05)); }
+/* 자유 배치에서는 캔버스도 같은 무늬를 그린다(메모 좌표와 원점이 맞아야 압정이 구멍에 꽂힌다).
+   판 표면은 캔버스 바깥까지 무늬를 이어 주는 몫이라 한 겹만 깐다.
+   background-size 를 같이 바꾸지 않으면 두 값 중 첫 값(28px)이 남아
+   음영 그라데이션이 28px 마다 반복되며 가로 줄무늬가 생긴다.
+   attachment: local 이라야 스크롤할 때 캔버스 무늬와 함께 움직인다.
+   가로 위상은 캔버스가 가운데 정렬되며 달라지므로 layoutBoardCanvas() 가 맞춘다. */
+.board-surface.is-plain {
+  background-image: var(--peg-dots);
+  background-size: 28px 28px;
+  background-position: 20px 26px;
+  background-attachment: local;
+}
 
 .memo-grid { list-style: none; margin: 0 auto; padding: 0; }
 
@@ -1069,15 +1078,12 @@ input[type="password"]:focus {
 /* 자유 배치 캔버스(넓은 화면) */
 .memo-grid.is-canvas {
   position: relative;
-  border-radius: 10px;
   background-color: var(--board-bg);
   /* 구멍 중심이 (14 + 28n, 14 + 28m) 에 오도록 그린다 */
-  background-image:
-    radial-gradient(circle 3.4px at 50% 50%, rgba(17, 24, 39, 0.30) 0 40%,
-      rgba(17, 24, 39, 0.14) 62%, rgba(255, 255, 255, 0.72) 80%, transparent 84%);
+  background-image: var(--peg-dots);
   background-size: 28px 28px;
   background-position: 0 0;
-  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+  /* 판 표면과 무늬가 이어지므로 테두리와 둥근 모서리는 두지 않는다 */
 }
 .memo-grid.is-canvas .memo { position: absolute; width: 252px; margin: 0; }
 .memo-grid.is-canvas .memo { touch-action: none; }
@@ -2383,7 +2389,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   const MEMO_W = 252;
   const PIN_X = MEMO_W / 2;                   // 126
   const PIN_Y = HOLE / 2;                     // 14 (메모 안쪽으로 박힌다)
-  const MEMO_H = 200;                         // 자동 배치용 기준 높이
+  const MEMO_H = 200;                         // 실측 전에 쓰는 기준 높이(카드 높이는 내용마다 다르다)
   const CANVAS_MIN_W = 721;                   // 이 폭 이상에서만 자유 배치 + 드래그
   const DRAG_THRESHOLD = 5;
   const MAX_SEARCH_RESULTS = 60;
@@ -5968,6 +5974,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     el.app.classList.add('is-zoomed');
     document.body.classList.add('is-locked');
     zoomOpen(rect);
+    // 판이 보이게 된 지금에야 카드 높이를 잴 수 있다. 자리를 다시 잡는다.
+    layoutBoardCanvas();
     el.app.setAttribute('aria-hidden', 'true');
     el.board.focus();
     el.boardSurface.scrollTop = 0;
@@ -6027,18 +6035,24 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   const isCanvasMode = () => window.innerWidth >= CANVAS_MIN_W;
   const snap = (value) => Math.round(value / HOLE) * HOLE;
 
-  // 좌표가 없는 메모를 겹치지 않는 빈 자리에 배치한다
-  function autoPlace(occupied) {
+  // 좌표가 없는 메모를 겹치지 않는 빈 자리에 배치한다.
+  // 카드 높이는 내용에 따라 달라지므로(짧은 메모 170px, 긴 메모 340px 남짓)
+  // 이미 놓인 것들의 실제 높이(r.h)와 새로 놓을 것의 실제 높이(height)로 검사한다.
+  function autoPlace(occupied, height) {
     const colStep = HOLE * 10;   // 280
-    const rowStep = HOLE * 8;    // 224
+    const gap = 12;
     const cols = Math.max(1, Math.floor((CANVAS_W - HOLE) / colStep));
-    for (let row = 0; row < 40; row += 1) {
+    const mine = height || MEMO_H;
+    const maxY = HOLE + HOLE * 240;
+
+    // 고정 간격으로 건너뛰면 키 큰 카드를 지나치므로 구멍 간격(28px)으로 훑는다.
+    // 스냅 단위와 같아서 압정 정렬도 그대로 유지된다.
+    for (let y = HOLE; y <= maxY; y += HOLE) {
       for (let col = 0; col < cols; col += 1) {
         const x = HOLE + col * colStep;
-        const y = HOLE + row * rowStep;
         const hit = occupied.some((r) =>
-          x < r.x + MEMO_W + 12 && x + MEMO_W + 12 > r.x &&
-          y < r.y + MEMO_H + 12 && y + MEMO_H + 12 > r.y);
+          x < r.x + MEMO_W + gap && x + MEMO_W + gap > r.x &&
+          y < r.y + r.h + gap && y + mine + gap > r.y);
         if (!hit) return { x: x, y: y };
       }
     }
@@ -6207,6 +6221,84 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     return item;
   }
 
+  // 붙어 있는 카드들의 실제 높이를 재서 자리와 판 크기를 정한다.
+  // 카드 높이는 내용마다 다르므로(짧은 메모 170px, 긴 메모 340px 남짓) 재 보지 않으면 겹친다.
+  // 숨겨진 동안에는 높이가 0으로 잡히니, 판이 보이게 된 뒤에 openBoard() 가 한 번 더 부른다.
+  // 판 표면의 구멍 무늬를 캔버스 무늬와 같은 위상에 둔다.
+  // 캔버스는 가운데 정렬이라 창 너비에 따라 시작 위치가 달라지고,
+  // 맞춰 주지 않으면 캔버스 경계에서 점이 어긋나 보인다.
+  //
+  // 자리를 잴 때 getBoundingClientRect() 를 쓰면 안 된다.
+  // 판을 여는 확대 애니메이션이 transform: scale() 을 걸어 둔 동안에는
+  // 줄어든 좌표가 나와(20px 이 2.6px 로) 위상이 틀어진다.
+  // clientWidth 와 padding 은 변형에 영향받지 않으므로 그 값으로 계산한다.
+  function alignBoardDots() {
+    const style = getComputedStyle(el.boardSurface);
+    const padLeft = parseFloat(style.paddingLeft) || 0;
+    const padRight = parseFloat(style.paddingRight) || 0;
+    const padTop = parseFloat(style.paddingTop) || 0;
+    const inner = el.boardSurface.clientWidth - padLeft - padRight;
+    const offsetX = padLeft + Math.max(0, (inner - CANVAS_W) / 2);   // margin: 0 auto 와 같은 계산
+    const phase = (value) => (((value % HOLE) + HOLE) % HOLE) + 'px';
+    el.boardSurface.style.backgroundPosition = phase(offsetX) + ' ' + phase(padTop);
+  }
+
+  function layoutBoardCanvas() {
+    const key = state.boardKey;
+    if (!key) return;
+
+    if (!isCanvasMode()) {                 // 목록 모드에서는 CSS 격자에 맡긴다
+      el.memoGrid.style.width = '';
+      el.memoGrid.style.height = '';
+      el.boardSurface.style.backgroundPosition = '';
+      return;
+    }
+
+    const cards = Array.prototype.map.call(el.memoGrid.querySelectorAll('.memo'), (card) => ({
+      card: card,
+      memo: getMemo(key, card.dataset.memoId)
+    }));
+
+    el.memoGrid.style.width = CANVAS_W + 'px';
+    alignBoardDots();
+    if (!cards.length) { el.memoGrid.style.height = '560px'; return; }
+
+    // 높이를 한 번에 몰아서 읽는다.
+    // 읽기와 쓰기를 번갈아 하면 카드마다 레이아웃이 다시 계산돼 느려진다.
+    cards.forEach((entry) => { entry.h = entry.card.offsetHeight || MEMO_H; });
+
+    // 좌표가 있는 메모를 먼저 자리에 놓고, 없는 메모는 그 사이 빈 자리를 찾아 넣는다
+    const occupied = [];
+    cards.forEach((entry) => {
+      const memo = entry.memo;
+      if (!memo || memo.x === null || memo.y === null) return;
+      // 판 밖으로 나가지 않도록 그릴 때도 한 번 더 가둔다
+      entry.pos = { x: clamp(memo.x, 0, CANVAS_W - MEMO_W), y: Math.max(0, memo.y) };
+      occupied.push({ x: entry.pos.x, y: entry.pos.y, h: entry.h });
+    });
+    cards.forEach((entry) => {
+      if (entry.pos) return;
+      entry.pos = autoPlace(occupied, entry.h);
+      entry.auto = true;                   // 아직 저장되지 않은 자동 위치
+      occupied.push({ x: entry.pos.x, y: entry.pos.y, h: entry.h });
+    });
+
+    // 자리도 한 번에 몰아서 쓴다
+    let maxBottom = 0;
+    cards.forEach((entry) => {
+      const card = entry.card;
+      card.style.left = entry.pos.x + 'px';
+      card.style.top = entry.pos.y + 'px';
+      card.dataset.x = String(entry.pos.x);
+      card.dataset.y = String(entry.pos.y);
+      if (entry.auto) card.dataset.auto = '1';
+      else delete card.dataset.auto;
+      maxBottom = Math.max(maxBottom, entry.pos.y + entry.h);   // 실제 높이로 판 크기를 잡는다
+    });
+
+    el.memoGrid.style.height = Math.max(560, maxBottom + HOLE * 4) + 'px';
+  }
+
   function renderBoard() {
     const key = state.boardKey;
     if (!key) return;
@@ -6230,45 +6322,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     el.boardSurface.classList.toggle('is-plain', canvas);
     el.memoGrid.replaceChildren();
 
-    const occupied = [];
-    if (canvas) {
-      // 좌표가 있는 메모를 먼저 자리에 놓고, 없는 메모는 빈 자리를 찾아 배치한다
-      ids.forEach((memoId) => {
-        const memo = getMemo(key, memoId);
-        if (memo.x !== null && memo.y !== null) occupied.push({ x: memo.x, y: memo.y });
-      });
-    }
-
-    let maxBottom = 0;
-    ids.forEach((memoId) => {
-      const memo = getMemo(key, memoId);
-      const card = buildMemoCard(key, memoId);
-      if (canvas) {
-        let pos;
-        if (memo.x !== null && memo.y !== null) {
-          // 판 밖으로 나가지 않도록 그릴 때도 한 번 더 가둔다
-          pos = { x: clamp(memo.x, 0, CANVAS_W - MEMO_W), y: Math.max(0, memo.y) };
-        } else {
-          pos = autoPlace(occupied);
-          occupied.push(pos);
-          card.dataset.auto = '1';        // 아직 저장되지 않은 자동 위치
-        }
-        card.style.left = pos.x + 'px';
-        card.style.top = pos.y + 'px';
-        card.dataset.x = String(pos.x);
-        card.dataset.y = String(pos.y);
-        maxBottom = Math.max(maxBottom, pos.y + MEMO_H);
-      }
-      el.memoGrid.appendChild(card);
-    });
-
-    if (canvas) {
-      el.memoGrid.style.width = CANVAS_W + 'px';
-      el.memoGrid.style.height = Math.max(560, maxBottom + HOLE * 4) + 'px';
-    } else {
-      el.memoGrid.style.width = '';
-      el.memoGrid.style.height = '';
-    }
+    // 카드를 먼저 다 붙이고, 자리는 layoutBoardCanvas() 가 실제 높이를 재서 정한다
+    ids.forEach((memoId) => el.memoGrid.appendChild(buildMemoCard(key, memoId)));
+    layoutBoardCanvas();
 
     el.boardEmpty.hidden = ids.length > 0;
     if (state.pendingPos && canvas) showDropHint(state.pendingPos);
@@ -8047,7 +8103,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       const observer = new ResizeObserver(() => {
         if (!state.boardKey || state.drag) return;
         const shouldBeCanvas = isCanvasMode();
-        if (shouldBeCanvas !== el.memoGrid.classList.contains('is-canvas')) renderBoard();
+        if (shouldBeCanvas !== el.memoGrid.classList.contains('is-canvas')) { renderBoard(); return; }
+        // 모드가 그대로여도 판 폭이 바뀌면 캔버스가 옮겨 앉으므로 무늬 위상을 다시 맞춘다
+        if (shouldBeCanvas) alignBoardDots();
       });
       observer.observe(el.boardSurface);
     }
