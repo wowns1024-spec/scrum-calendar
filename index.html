@@ -1086,6 +1086,38 @@ input[type="password"]:focus {
   /* 판 표면과 무늬가 이어지므로 테두리와 둥근 모서리는 두지 않는다 */
 }
 .memo-grid.is-canvas .memo { position: absolute; width: 252px; margin: 0; }
+/* 높이를 줄이면 내용이 삐져나오므로 가둔다. 잘렸다는 건 아래쪽 페이드로 알린다. */
+.memo-grid.is-canvas .memo { overflow: hidden; }
+/* 높이가 고정되면 flex 자식이 찌그러진다. 줄지 말고 넘쳐서 잘리게 둔다. */
+.memo-grid.is-canvas .memo > * { flex: none; }
+.memo-grid.is-canvas .memo.is-clipped::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 22px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--memo-bg, #fff8c5));
+}
+/* 크기 손잡이. .memo-hit 이 카드를 덮고 있으므로 그보다 위에 둔다. */
+.memo-size {
+  position: absolute;
+  right: 0; bottom: 0;
+  z-index: 3;
+  width: 18px; height: 18px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background:
+    linear-gradient(135deg, transparent 0 45%, var(--memo-ink, #6b4f00) 45% 55%, transparent 55% 100%),
+    linear-gradient(135deg, transparent 0 70%, var(--memo-ink, #6b4f00) 70% 80%, transparent 80% 100%);
+  opacity: 0.28;
+  border-bottom-right-radius: 3px;
+}
+.memo-size:hover { opacity: 0.6; }
+.memo.is-sizing { z-index: 20; transition: none; transform: rotate(0deg); box-shadow: 0 12px 24px rgba(17, 24, 39, 0.28); }
+.memo.is-sizing .memo-size { opacity: 0.7; }
+.memo.is-sizing:hover { transform: rotate(0deg); }
+/* 목록 모드에서는 크기를 CSS 격자가 정한다 */
+.memo-grid.is-list .memo-size { display: none; }
 .memo-grid.is-canvas .memo { touch-action: none; }
 .memo-grid.is-canvas .memo .memo-hit { cursor: grab; }
 .memo.is-dragging {
@@ -2390,6 +2422,13 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   const PIN_X = MEMO_W / 2;                   // 126
   const PIN_Y = HOLE / 2;                     // 14 (메모 안쪽으로 박힌다)
   const MEMO_H = 200;                         // 실측 전에 쓰는 기준 높이(카드 높이는 내용마다 다르다)
+  // 압정 중심은 x + 폭/2 이고 구멍 중심은 14 + 28n 이다.
+  // x 가 28 단위로 스냅되므로 폭/2 ≡ 14 (mod 28), 즉 폭은 56 단위여야 구멍에 맞는다.
+  const MEMO_W_STEP = 56;                     // 폭 조절 단위(252 + 56k)
+  const MEMO_W_MIN = 196;                     // 252 - 56
+  const MEMO_W_MAX = 476;                     // 252 + 56*4
+  const MEMO_H_MIN = 168;                     // .memo 의 min-height (28*6)
+  const MEMO_H_MAX = 700;                     // 28*25
   const CANVAS_MIN_W = 721;                   // 이 폭 이상에서만 자유 배치 + 드래그
   const DRAG_THRESHOLD = 5;
   const MAX_SEARCH_RESULTS = 60;
@@ -2476,6 +2515,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     pinnedKind: '',         // 'save' | 'drop'
     pinnedTimer: null,
     drag: null,             // 드래그 중인 상태
+    sizing: null,           // 크기 조절 중인 상태
     suppressClick: false,
     boardDirty: false,      // 드래그 중 들어온 갱신을 나중에 반영
     zoomTimer: null,
@@ -2587,6 +2627,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     nickname: '',
     x: null,                    // 타공판 위 좌표(없으면 자동 배치)
     y: null,
+    w: null,                    // 가로(없으면 기본 폭 MEMO_W)
+    h: null,                    // 세로(없으면 내용에 맞춤)
     yesterday: '', today: '', blockers: '', events: [],
     title: '', body: '', images: [],
     comments: [],
@@ -2635,6 +2677,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     memo.nickname = cleanName(raw.nickname) || memo.authorId;
     memo.x = asNumber(raw.x);
     memo.y = asNumber(raw.y);
+    // 크기는 규격을 벗어난 값이 저장돼 있어도 읽을 때 격자에 다시 맞춘다
+    memo.w = raw.w === null || raw.w === undefined ? null : snapMemoW(asNumber(raw.w));
+    memo.h = raw.h === null || raw.h === undefined ? null : snapMemoH(asNumber(raw.h));
     memo.createdAt = typeof raw.createdAt === 'string' ? raw.createdAt : '';
     memo.updatedAt = typeof raw.updatedAt === 'string' ? raw.updatedAt : '';
     memo.imported = raw.imported === true;
@@ -6034,15 +6079,30 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   // 화면이 넓을 때만 자유 배치 + 드래그를 쓴다
   const isCanvasMode = () => window.innerWidth >= CANVAS_MIN_W;
   const snap = (value) => Math.round(value / HOLE) * HOLE;
+  const isFiniteNum = (value) => typeof value === 'number' && isFinite(value);
+
+  // 폭은 252 + 56k 격자 위에 있어야 압정이 구멍 정중앙에 온다.
+  // 경계값(196, 476)도 격자 위의 값이라 가둔 뒤에도 어긋나지 않는다.
+  const snapMemoW = (value) => (isFiniteNum(value)
+    ? clamp(MEMO_W + Math.round((value - MEMO_W) / MEMO_W_STEP) * MEMO_W_STEP, MEMO_W_MIN, MEMO_W_MAX)
+    : null);
+  // 압정은 카드 위쪽에 있어 높이는 정렬과 무관하다. 판의 결만 맞춰 28 단위로 둔다.
+  const snapMemoH = (value) => (isFiniteNum(value)
+    ? clamp(Math.round(value / HOLE) * HOLE, MEMO_H_MIN, MEMO_H_MAX)
+    : null);
+
+  const memoWidth = (memo) => (memo && isFiniteNum(memo.w) ? memo.w : MEMO_W);
+  const memoHeight = (memo) => (memo && isFiniteNum(memo.h) ? memo.h : 0);   // 0 = 내용에 맞춤
 
   // 좌표가 없는 메모를 겹치지 않는 빈 자리에 배치한다.
   // 카드 높이는 내용에 따라 달라지므로(짧은 메모 170px, 긴 메모 340px 남짓)
   // 이미 놓인 것들의 실제 높이(r.h)와 새로 놓을 것의 실제 높이(height)로 검사한다.
-  function autoPlace(occupied, height) {
+  function autoPlace(occupied, width, height) {
     const colStep = HOLE * 10;   // 280
     const gap = 12;
     const cols = Math.max(1, Math.floor((CANVAS_W - HOLE) / colStep));
-    const mine = height || MEMO_H;
+    const myW = width || MEMO_W;
+    const myH = height || MEMO_H;
     const maxY = HOLE + HOLE * 240;
 
     // 고정 간격으로 건너뛰면 키 큰 카드를 지나치므로 구멍 간격(28px)으로 훑는다.
@@ -6050,9 +6110,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     for (let y = HOLE; y <= maxY; y += HOLE) {
       for (let col = 0; col < cols; col += 1) {
         const x = HOLE + col * colStep;
+        if (x + myW > CANVAS_W) continue;              // 넓은 카드는 오른쪽 칸에 못 들어간다
         const hit = occupied.some((r) =>
-          x < r.x + MEMO_W + gap && x + MEMO_W + gap > r.x &&
-          y < r.y + r.h + gap && y + mine + gap > r.y);
+          x < r.x + r.w + gap && x + myW + gap > r.x &&
+          y < r.y + r.h + gap && y + myH + gap > r.y);
         if (!hit) return { x: x, y: y };
       }
     }
@@ -6097,7 +6158,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       nickname + '님의 ' + (memo.type === 'free' ? '자유 메모' : '스크럼 메모') + ' 열기' +
       (blocked ? ', 막힌 점 있음' : '') +
       (memo.comments.length ? ', 댓글 ' + memo.comments.length + '개' : '') +
-      ', Shift와 화살표 키로 위치 이동 가능');
+      ', Shift와 화살표 키로 위치 이동' +
+      (mine ? ', Shift+Alt와 화살표 키로 크기 조절' : '') + ' 가능');
     item.appendChild(hit);
 
     const head = document.createElement('div');
@@ -6205,6 +6267,15 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       }
     }
 
+    if (mine) {                          // 크기 조절은 자기 메모만(목록 모드에서는 CSS 로 숨긴다)
+      const grip = document.createElement('span');
+      grip.className = 'memo-size';
+      grip.dataset.memoId = memoId;
+      grip.setAttribute('aria-hidden', 'true');   // 키보드는 memo-hit 에서 받는다
+      grip.title = '끌어서 크기 조절';
+      item.appendChild(grip);
+    }
+
     const foot = document.createElement('p');
     foot.className = 'memo-time';
     const time = document.createElement('span');
@@ -6251,6 +6322,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       el.memoGrid.style.width = '';
       el.memoGrid.style.height = '';
       el.boardSurface.style.backgroundPosition = '';
+      // 넓은 화면에서 조절해 둔 크기가 목록 모드에 남지 않게 지운다
+      el.memoGrid.querySelectorAll('.memo').forEach((card) => {
+        card.style.width = '';
+        card.style.height = '';
+        card.style.removeProperty('--pin-x');
+      });
       return;
     }
 
@@ -6263,9 +6340,22 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     alignBoardDots();
     if (!cards.length) { el.memoGrid.style.height = '560px'; return; }
 
+    // 크기를 먼저 써 둔다. 높이를 재기 전에 폭과 지정 높이가 반영돼 있어야 한다.
+    cards.forEach((entry) => {
+      const card = entry.card;
+      entry.w = memoWidth(entry.memo);
+      card.style.width = entry.w + 'px';
+      card.style.setProperty('--pin-x', (entry.w / 2) + 'px');   // 압정과 기울기 축을 폭 중앙에
+      const fixed = memoHeight(entry.memo);
+      card.style.height = fixed ? fixed + 'px' : '';
+    });
+
     // 높이를 한 번에 몰아서 읽는다.
     // 읽기와 쓰기를 번갈아 하면 카드마다 레이아웃이 다시 계산돼 느려진다.
-    cards.forEach((entry) => { entry.h = entry.card.offsetHeight || MEMO_H; });
+    cards.forEach((entry) => {
+      entry.h = entry.card.offsetHeight || MEMO_H;
+      entry.clipped = entry.card.scrollHeight > entry.card.clientHeight + 1;
+    });
 
     // 좌표가 있는 메모를 먼저 자리에 놓고, 없는 메모는 그 사이 빈 자리를 찾아 넣는다
     const occupied = [];
@@ -6273,14 +6363,14 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       const memo = entry.memo;
       if (!memo || memo.x === null || memo.y === null) return;
       // 판 밖으로 나가지 않도록 그릴 때도 한 번 더 가둔다
-      entry.pos = { x: clamp(memo.x, 0, CANVAS_W - MEMO_W), y: Math.max(0, memo.y) };
-      occupied.push({ x: entry.pos.x, y: entry.pos.y, h: entry.h });
+      entry.pos = { x: clamp(memo.x, 0, CANVAS_W - entry.w), y: Math.max(0, memo.y) };
+      occupied.push({ x: entry.pos.x, y: entry.pos.y, w: entry.w, h: entry.h });
     });
     cards.forEach((entry) => {
       if (entry.pos) return;
-      entry.pos = autoPlace(occupied, entry.h);
+      entry.pos = autoPlace(occupied, entry.w, entry.h);
       entry.auto = true;                   // 아직 저장되지 않은 자동 위치
-      occupied.push({ x: entry.pos.x, y: entry.pos.y, h: entry.h });
+      occupied.push({ x: entry.pos.x, y: entry.pos.y, w: entry.w, h: entry.h });
     });
 
     // 자리도 한 번에 몰아서 쓴다
@@ -6293,6 +6383,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       card.dataset.y = String(entry.pos.y);
       if (entry.auto) card.dataset.auto = '1';
       else delete card.dataset.auto;
+      card.classList.toggle('is-clipped', !!entry.clipped);
       maxBottom = Math.max(maxBottom, entry.pos.y + entry.h);   // 실제 높이로 판 크기를 잡는다
     });
 
@@ -6390,6 +6481,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
     state.drag = {
       canTrash: isMine(memo),              // 휴지통에 버릴 수 있는지
+      width: memoWidth(memo),              // 가두는 범위는 그 메모의 폭에 달렸다
       memoId: card.dataset.memoId,
       card: card,
       originX: Number(card.dataset.x || 0),
@@ -6414,7 +6506,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       drag.card.classList.add('is-dragging');
       el.btnTrash.classList.add('is-armed');
     }
-    drag.currentX = clamp(drag.originX + dx, 0, CANVAS_W - MEMO_W);
+    drag.currentX = clamp(drag.originX + dx, 0, CANVAS_W - drag.width);
     drag.currentY = Math.max(0, drag.originY + dy);
     drag.card.style.left = drag.currentX + 'px';
     drag.card.style.top = drag.currentY + 'px';
@@ -6506,7 +6598,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     clearTrashState(drag.card);
 
     // 가장 가까운 구멍에 스냅
-    const x = snap(clamp(drag.currentX === undefined ? drag.originX : drag.currentX, 0, CANVAS_W - MEMO_W));
+    const x = snap(clamp(drag.currentX === undefined ? drag.originX : drag.currentX, 0, CANVAS_W - drag.width));
     const y = snap(Math.max(0, drag.currentY === undefined ? drag.originY : drag.currentY));
     drag.card.style.left = x + 'px';
     drag.card.style.top = y + 'px';
@@ -6521,9 +6613,118 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     renderBoard();
   }
 
+  /* ---------- 크기 조절(자기 메모만) ---------- */
+  async function saveMemoSize(memoId, w, h) {
+    try {
+      await state.store.patchMemo(state.calendar.id, state.boardKey, memoId, { w: w, h: h });
+    } catch (err) {
+      console.warn('크기 저장 실패', err);
+      showToast(friendlyError(err), 'error');
+      renderBoard();                       // 실패하면 원래 크기로 되돌린다
+    }
+  }
+
+  function handleSizePointerDown(event) {
+    if (!isCanvasMode() || event.button !== 0 || state.drag || state.sizing) return;
+    const grip = event.target.closest ? event.target.closest('.memo-size') : null;
+    if (!grip) return;
+
+    const card = grip.closest('.memo');
+    const memo = getMemo(state.boardKey, card.dataset.memoId);
+    if (!isMine(memo)) return;             // 자기 메모만
+
+    // 드래그 시작 핸들러도 같은 el.memoGrid 에 걸려 있다.
+    // stopPropagation() 은 같은 요소의 다른 리스너를 못 막으므로 immediate 로 끊어야
+    // 크기를 조절하는 동안 메모가 같이 끌려가지 않는다. (이 핸들러가 먼저 등록돼 있다)
+    event.stopImmediatePropagation();
+    event.preventDefault();
+
+    state.sizing = {
+      memoId: card.dataset.memoId,
+      card: card,
+      startX: event.clientX,
+      startY: event.clientY,
+      originW: card.offsetWidth,
+      originH: card.offsetHeight,
+      left: Number(card.dataset.x || 0),
+      pointerId: event.pointerId
+    };
+    card.classList.add('is-sizing');
+    try { grip.setPointerCapture(event.pointerId); } catch (err) { /* 무시 */ }
+  }
+
+  function handleSizePointerMove(event) {
+    const sizing = state.sizing;
+    if (!sizing || event.pointerId !== sizing.pointerId) return;
+    event.preventDefault();
+
+    // 끄는 동안에는 자유롭게 따라오게 두고, 손을 뗄 때 격자에 맞춘다
+    const maxW = Math.min(MEMO_W_MAX, CANVAS_W - sizing.left);
+    const w = clamp(sizing.originW + (event.clientX - sizing.startX), MEMO_W_MIN, maxW);
+    const h = clamp(sizing.originH + (event.clientY - sizing.startY), MEMO_H_MIN, MEMO_H_MAX);
+    sizing.currentW = w;
+    sizing.currentH = h;
+    sizing.card.style.width = w + 'px';
+    sizing.card.style.height = h + 'px';
+    sizing.card.style.setProperty('--pin-x', (w / 2) + 'px');
+  }
+
+  async function handleSizePointerUp(event) {
+    const sizing = state.sizing;
+    if (!sizing || event.pointerId !== sizing.pointerId) return;
+    state.sizing = null;
+    sizing.card.classList.remove('is-sizing');
+
+    const maxW = Math.min(MEMO_W_MAX, CANVAS_W - sizing.left);
+    // 격자에 맞춘다. 폭은 56 단위여야 압정이 구멍 정중앙에 온다.
+    let w = snapMemoW(sizing.currentW === undefined ? sizing.originW : sizing.currentW);
+    const h = snapMemoH(sizing.currentH === undefined ? sizing.originH : sizing.currentH);
+    while (w > maxW && w - MEMO_W_STEP >= MEMO_W_MIN) w -= MEMO_W_STEP;   // 판을 넘지 않게 한 칸씩 줄인다
+
+    sizing.card.style.width = w + 'px';
+    sizing.card.style.height = h + 'px';
+    sizing.card.style.setProperty('--pin-x', (w / 2) + 'px');
+
+    await saveMemoSize(sizing.memoId, w, h);   // 끄는 동안이 아니라 뗄 때 한 번만 저장한다
+    state.boardDirty = false;
+    renderBoard();
+  }
+
+  // 키보드로 크기 조절: Shift + Alt + 화살표
+  function handleMemoSizeKeydown(event) {
+    if (!event.shiftKey || !event.altKey || !isCanvasMode()) return;
+    const hit = event.target.closest ? event.target.closest('.memo-hit') : null;
+    if (!hit) return;
+
+    let dw = 0;
+    let dh = 0;
+    if (event.key === 'ArrowLeft') dw = -MEMO_W_STEP;
+    else if (event.key === 'ArrowRight') dw = MEMO_W_STEP;
+    else if (event.key === 'ArrowUp') dh = -HOLE;
+    else if (event.key === 'ArrowDown') dh = HOLE;
+    else return;
+
+    const memoId = hit.dataset.memoId;
+    const memo = getMemo(state.boardKey, memoId);
+    if (!isMine(memo)) return;
+    event.preventDefault();
+
+    const card = hit.closest('.memo');
+    const left = Number(card.dataset.x || 0);
+    const maxW = Math.min(MEMO_W_MAX, CANVAS_W - left);
+    let w = snapMemoW(memoWidth(memo) + dw);
+    while (w > maxW && w - MEMO_W_STEP >= MEMO_W_MIN) w -= MEMO_W_STEP;
+    const h = snapMemoH((memoHeight(memo) || card.offsetHeight) + dh);
+
+    card.style.width = w + 'px';
+    card.style.height = h + 'px';
+    card.style.setProperty('--pin-x', (w / 2) + 'px');
+    saveMemoSize(memoId, w, h);
+  }
+
   // 키보드로 위치 이동: Shift + 화살표
   function handleMemoKeydown(event) {
-    if (!event.shiftKey || !isCanvasMode()) return;
+    if (!event.shiftKey || event.altKey || !isCanvasMode()) return;   // Alt 조합은 크기 조절 몫
     const hit = event.target.closest ? event.target.closest('.memo-hit') : null;
     if (!hit) return;
 
@@ -6538,7 +6739,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     const memoId = hit.dataset.memoId;
     const card = hit.closest('.memo');
     event.preventDefault();
-    const x = snap(clamp(Number(card.dataset.x || 0) + dx, 0, CANVAS_W - MEMO_W));
+    const width = memoWidth(getMemo(state.boardKey, memoId));
+    const x = snap(clamp(Number(card.dataset.x || 0) + dx, 0, CANVAS_W - width));
     const y = snap(Math.max(0, Number(card.dataset.y || 0) + dy));
     card.style.left = x + 'px';
     card.style.top = y + 'px';
@@ -6551,7 +6753,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   function handleCanvasClick(event) {
     if (!isCanvasMode() || event.target !== el.memoGrid) return;
     const rect = el.memoGrid.getBoundingClientRect();
-    const x = snap(clamp(event.clientX - rect.left - MEMO_W / 2, 0, CANVAS_W - MEMO_W));
+    const x = snap(clamp(event.clientX - rect.left - MEMO_W / 2, 0, CANVAS_W - MEMO_W));   // 새 메모는 기본 폭
     const y = snap(Math.max(0, event.clientY - rect.top - 20));
     state.pendingPos = { x: x, y: y };
     showDropHint(state.pendingPos);
@@ -7524,6 +7726,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
           };
           if (memo.x !== null) row.x = memo.x;
           if (memo.y !== null) row.y = memo.y;
+          if (memo.w !== null) row.w = memo.w;
+          if (memo.h !== null) row.h = memo.h;
           if (memo.type === 'free') {
             row.title = memo.title;
             row.body = memo.body;
@@ -8079,6 +8283,13 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
       handleCanvasClick(event);
     });
+
+    // 크기 조절. 드래그보다 먼저 걸어 손잡이에서 시작한 포인터를 가로챈다.
+    el.memoGrid.addEventListener('pointerdown', handleSizePointerDown);
+    el.memoGrid.addEventListener('pointermove', handleSizePointerMove);
+    el.memoGrid.addEventListener('pointerup', handleSizePointerUp);
+    el.memoGrid.addEventListener('pointercancel', handleSizePointerUp);
+    el.memoGrid.addEventListener('keydown', handleMemoSizeKeydown);
 
     // 드래그로 옮기기
     el.memoGrid.addEventListener('pointerdown', handleBoardPointerDown);
