@@ -1281,6 +1281,58 @@ input[type="password"]:focus {
   line-height: 0;
 }
 .memo-thumb img { width: 100%; height: 110px; object-fit: cover; display: block; }
+
+/* 사진 메모: 포스트잇이 아니라 인화물 한 장을 꽂아 둔 모습 */
+.memo.is-photo {
+  padding: 6px 6px 0;              /* 사진 둘레의 흰 여백(인화지) */
+  gap: 0;
+  background: #fff;
+  border-color: #e8e5dd;
+  min-height: 0;                   /* 사진 비율대로 줄어들 수 있어야 한다 */
+}
+.memo.is-photo .photo-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--surface-2);
+  line-height: 0;
+}
+.memo.is-photo .photo-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 높이를 지정하지 않은 카드는 사진 비율이 높이를 정한다.
+   .memo-grid.is-canvas .memo > * { flex: none } 를 넘어서야 하므로 선택자를 더 길게 잡는다. */
+.memo-grid.is-canvas .memo.is-photo .photo-box,
+.memo-grid.is-list .memo.is-photo .photo-box { flex: 1 1 auto; min-height: 0; }
+
+.photo-badges {
+  position: absolute;
+  left: 6px; right: 6px; top: 6px;
+  display: flex; flex-wrap: wrap; gap: 4px;
+  line-height: 1;
+  pointer-events: none;
+}
+/* 사진 위 글씨는 어떤 사진에서도 읽혀야 한다 */
+.photo-badge {
+  max-width: 100%;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.62);
+  color: #fff;
+  font-size: 11px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.photo-who { font-weight: 800; }
+.photo-caption {
+  flex: none;
+  margin: 0;
+  padding: 7px 4px 8px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 제목 띠가 붙으면 그 띠의 여백을 쓰므로 카드 아래 여백을 뺀다 */
+.memo.is-photo { padding-bottom: 6px; }
+.memo.is-photo.is-captioned { padding-bottom: 0; }
 .thumb-more {
   position: absolute;
   right: 6px; bottom: 6px;
@@ -6135,10 +6187,12 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     const tilt = memoStyleFor(memoId).tilt;        // 기울기는 메모마다 다르게
     const blocked = memo.type === 'scrum' && hasBlocker(memo.blockers);
     const mine = isMine(memo);
+    // 사진이 든 자유 메모는 포스트잇이 아니라 사진 한 장을 꽂아 둔 모습으로 그린다
+    const isPhoto = memo.type === 'free' && memo.images.length > 0;
 
     const item = document.createElement('li');
     item.className = 'memo' + (blocked ? ' is-blocked' : '') + (mine ? ' is-mine' : '') +
-      (memo.type === 'free' ? ' is-free' : '');
+      (memo.type === 'free' ? ' is-free' : '') + (isPhoto ? ' is-photo' : '');
     item.dataset.memoId = memoId;
     item.dataset.author = memo.authorId;
     item.style.setProperty('--memo-bg', style.bg);
@@ -6172,6 +6226,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
     const head = document.createElement('div');
     head.className = 'memo-head';
+    if (isPhoto) head.hidden = true;     // 사진 메모는 사진 위 배지로 대신한다
 
     const who = document.createElement('h3');
     who.className = 'memo-name';
@@ -6205,34 +6260,77 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     item.appendChild(head);
 
     if (memo.type === 'free') {
-      // ---------- 자유 메모: 사진 + 제목 + 내용 ----------
-      if (memo.images.length) {
+      // ---------- 자유 메모 ----------
+      if (isPhoto) {
+        // 사진 그 자체를 판에 꽂는다. 글은 메모를 열면 다 보이므로 표시만 남긴다.
         const shot = document.createElement('div');
-        shot.className = 'memo-thumb';
+        shot.className = 'photo-box';
+
+        // 사진이 늦게 도착해도 자리가 흔들리지 않도록 저장된 크기로 비율을 미리 잡는다.
+        // 비율이 없는 옛 사진은 4:3 으로 둔다.
+        const first = memo.images[0];
+        const ratio = (first.w && first.h) ? (first.w + ' / ' + first.h) : '4 / 3';
+        shot.dataset.ratio = ratio;
+        shot.style.aspectRatio = ratio;
+
         const img = document.createElement('img');
         img.alt = nickname + '님이 올린 사진';
         img.loading = 'lazy';
-        resolveImageInto(img, memo.images[0]);     // 사진 데이터는 따로 불러온다
+        resolveImageInto(img, first);              // 사진 데이터는 따로 불러온다
         shot.appendChild(img);
+
+        // 사진 위에 얹는 표식들. 어떤 사진에서도 읽히도록 어두운 바탕을 깐다.
+        const badges = document.createElement('div');
+        badges.className = 'photo-badges';
+
+        const who2 = document.createElement('span');
+        who2.className = 'photo-badge photo-who';
+        who2.textContent = nickname;               // XSS 방지
+        badges.appendChild(who2);
+
         if (memo.images.length > 1) {
           const more = document.createElement('span');
-          more.className = 'thumb-more';
+          more.className = 'photo-badge';
           more.textContent = '+' + (memo.images.length - 1);
-          shot.appendChild(more);
+          more.title = '사진 ' + memo.images.length + '장';
+          badges.appendChild(more);
         }
+        if (memo.body.trim()) {
+          const note = document.createElement('span');
+          note.className = 'photo-badge';
+          note.textContent = '글';
+          note.title = '적어 둔 글이 있습니다';
+          badges.appendChild(note);
+        }
+        if (memo.comments.length) {
+          const talk = document.createElement('span');
+          talk.className = 'photo-badge';
+          talk.textContent = '💬 ' + memo.comments.length;
+          badges.appendChild(talk);
+        }
+        shot.appendChild(badges);
         item.appendChild(shot);
-      }
-      if (memo.title.trim()) {
-        const title = document.createElement('p');
-        title.className = 'memo-free-title';
-        title.textContent = memo.title.trim();
-        item.appendChild(title);
-      }
-      if (memo.body.trim()) {
-        const body = document.createElement('div');
-        body.className = 'memo-clamp rich';
-        renderRichText(body, memo.body.trim());
-        item.appendChild(body);
+
+        if (memo.title.trim()) {                   // 제목이 있을 때만 아래 띠를 붙인다
+          const caption = document.createElement('p');
+          caption.className = 'photo-caption';
+          caption.textContent = memo.title.trim();
+          item.appendChild(caption);
+          item.classList.add('is-captioned');
+        }
+      } else {
+        if (memo.title.trim()) {
+          const title = document.createElement('p');
+          title.className = 'memo-free-title';
+          title.textContent = memo.title.trim();
+          item.appendChild(title);
+        }
+        if (memo.body.trim()) {
+          const body = document.createElement('div');
+          body.className = 'memo-clamp rich';
+          renderRichText(body, memo.body.trim());
+          item.appendChild(body);
+        }
       }
     } else {
       // ---------- 스크럼 메모 ----------
@@ -6286,6 +6384,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
     const foot = document.createElement('p');
     foot.className = 'memo-time';
+    if (isPhoto) foot.hidden = true;     // 사진 메모는 사진 위 배지로 대신한다
     const time = document.createElement('span');
     time.textContent = memo.updatedAt ? formatUpdatedAt(memo.updatedAt) : '';
     foot.appendChild(time);
@@ -6356,6 +6455,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       card.style.setProperty('--pin-x', (entry.w / 2) + 'px');   // 압정과 기울기 축을 폭 중앙에
       const fixed = memoHeight(entry.memo);
       card.style.height = fixed ? fixed + 'px' : '';
+      // 사진 카드: 높이를 지정하면 비율 대신 남은 자리를 채우게 한다(둘을 같이 두면 넘친다)
+      const shot = card.querySelector('.photo-box');
+      if (shot) shot.style.aspectRatio = fixed ? 'auto' : (shot.dataset.ratio || '4 / 3');
     });
 
     // 높이를 한 번에 몰아서 읽는다.
