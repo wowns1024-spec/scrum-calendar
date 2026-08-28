@@ -2469,6 +2469,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     { side: 480, quality: 0.45 }
   ];
   const MAX_IMAGE_CHARS = 900000;             // base64 길이 상한(문서 1MB 여유분)
+  // 움직이는 GIF 는 캔버스로 다시 그리면 첫 프레임만 남아 줄일 방법이 없다.
+  // 원본을 그대로 담아야 하므로 base64 로 부풀어도 위 상한 안에 들어와야 한다.
+  //   (900000 - 'data:image/gif;base64,'.length) * 3 / 4 = 674983 바이트
+  const MAX_GIF_BYTES = 674983;               // 약 659KB
   const HOLE = 28;                            // 타공판 구멍 간격 = 스냅 단위
   const CANVAS_W = 1204;                      // 자유 배치 캔버스 폭(28의 배수)
   // 메모 폭을 252(28*9)로 두면 가로 중앙이 126이 되고,
@@ -6928,7 +6932,66 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 
   // 저장 전에 브라우저에서 줄이고 압축한다.
   // 문서 하나에 담아야 하므로 정해진 크기 아래로 내려갈 때까지 단계적으로 줄인다.
-  function resizeImage(file) {
+  // 움직이는 GIF 인지 본다. 그래픽 제어 확장 블록(21 F9 04)이 둘 이상이면 여러 프레임이다.
+  // 애매하면 '움직인다'고 보는 쪽이 안전하다(정지로 잘못 보면 애니메이션이 사라진다).
+  async function isAnimatedGif(file) {
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let frames = 0;
+      for (let i = 0; i < bytes.length - 3; i += 1) {
+        if (bytes[i] === 0x21 && bytes[i + 1] === 0xF9 && bytes[i + 2] === 0x04) {
+          frames += 1;
+          if (frames > 1) return true;
+        }
+      }
+      return false;
+    } catch (err) {
+      console.warn('GIF 프레임 수를 세지 못했습니다.', err);
+      return true;
+    }
+  }
+
+  const formatBytes = (n) => (n >= 1048576
+    ? (n / 1048576).toFixed(1) + 'MB'
+    : Math.max(1, Math.round(n / 1024)) + 'KB');
+
+  // GIF 는 원본을 그대로 담는다. 캔버스를 거치면 움직임이 사라지기 때문이다.
+  function keepGifAsIs(file) {
+    return new Promise((resolve, reject) => {
+      if (file.size > MAX_GIF_BYTES) {
+        // 무엇이 문제인지 알 수 있게 실제 크기와 한계를 함께 알린다
+        reject(new Error('이 GIF는 ' + formatBytes(file.size) + '라 넣을 수 없습니다. ' +
+          '움직이는 GIF는 ' + formatBytes(MAX_GIF_BYTES) + '까지만 올릴 수 있습니다.'));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('사진을 읽지 못했습니다.'));
+      reader.onload = () => {
+        const dataUrl = String(reader.result || '');
+        if (dataUrl.length > MAX_IMAGE_CHARS) {
+          reject(new Error('이 GIF는 ' + formatBytes(file.size) + '라 넣을 수 없습니다. ' +
+            '움직이는 GIF는 ' + formatBytes(MAX_GIF_BYTES) + '까지만 올릴 수 있습니다.'));
+          return;
+        }
+        // 사진 카드가 비율로 자리를 미리 잡으므로 가로·세로를 반드시 채운다
+        const probe = new Image();
+        probe.onload = () => resolve({
+          dataUrl: dataUrl,
+          w: probe.naturalWidth || 0,
+          h: probe.naturalHeight || 0
+        });
+        probe.onerror = () => reject(new Error('사진을 읽지 못했습니다.'));
+        probe.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function resizeImage(file) {
+    // 움직이는 GIF 만 원본을 담는다. 정지 GIF 는 아래 축소 경로가 더 작게 만든다.
+    if (file.type === 'image/gif' && await isAnimatedGif(file)) return keepGifAsIs(file);
+
     return new Promise((resolve, reject) => {
       const objectUrl = URL.createObjectURL(file);
       const image = new Image();
@@ -7270,7 +7333,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     setDraftType(wanted, false);
 
     el.imageHint.textContent =
-      '끌어다 놓거나 붙여넣기(Ctrl+V)도 됩니다. 최대 ' + MAX_IMAGES + '장, 자동으로 줄여 저장합니다.';
+      '끌어다 놓거나 붙여넣기(Ctrl+V)도 됩니다. 최대 ' + MAX_IMAGES + '장, 자동으로 줄여 저장합니다. ' +
+      '움직이는 GIF는 줄일 수 없어 ' + formatBytes(MAX_GIF_BYTES) + '까지만 올릴 수 있습니다.';
     el.btnPickImage.disabled = state.draftImages.length >= MAX_IMAGES;
 
     el.viewPane.hidden = true;
