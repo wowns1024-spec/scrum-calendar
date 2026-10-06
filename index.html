@@ -347,6 +347,25 @@ input[type="password"]:focus {
 }
 .cal-empty { margin: 0; padding: 8px 10px; font-size: 12.5px; color: var(--muted); }
 
+/* 설정 맨 아래의 되돌릴 수 없는 동작 */
+.set-danger {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.leave-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.leave-points li {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 13px; color: var(--text-2);
+}
+.leave-points li::before {
+  content: '·';
+  flex: none;
+  font-weight: 800;
+  color: var(--muted);
+}
+
 .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .who {
   display: inline-flex;
@@ -2203,6 +2222,11 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       <!-- 설정 메뉴 -->
       <div class="pane" id="settingsMenu">
         <ul class="set-menu" id="setMenu"></ul>
+
+        <div class="set-danger">
+          <button type="button" class="btn danger block" id="btnLeaveCal">달력에서 나가기</button>
+          <p class="hint" id="leaveHint"></p>
+        </div>
       </div>
 
       <!-- 월정액 목록 -->
@@ -2305,6 +2329,32 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       <ul class="alarm-list" id="alarmList"></ul>
       <p class="alarm-empty" id="alarmEmpty" hidden>아직 받은 알림이 없습니다.</p>
     </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     달력에서 나가기 확인
+     ========================================================= -->
+<div class="backdrop" id="leaveBackdrop" hidden>
+  <div class="sheet sheet-sm" id="leaveSheet" role="dialog" aria-modal="true"
+       aria-labelledby="leaveTitle" tabindex="-1">
+    <header class="sheet-head">
+      <div>
+        <h2 class="sheet-title" id="leaveTitle">달력에서 나가기</h2>
+        <p class="sheet-meta" id="leaveMeta"></p>
+      </div>
+    </header>
+
+    <div class="sheet-body">
+      <ul class="leave-points" id="leavePoints"></ul>
+      <p class="error-text" id="leaveWarn" hidden></p>
+    </div>
+
+    <footer class="sheet-foot">
+      <span class="foot-spacer"></span>
+      <button type="button" class="btn" id="btnLeaveCancel">취소</button>
+      <button type="button" class="btn danger" id="btnLeaveOk">나가기</button>
+    </footer>
   </div>
 </div>
 
@@ -3085,6 +3135,14 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         writeDb(db);
         notifyCalendars();
       },
+      async removeMember(calId, uid) {
+        const db = readDb();
+        if (!db.calendars[calId]) throw new Error('달력을 찾을 수 없습니다.');
+        db.calendars[calId].members = Object.assign({}, db.calendars[calId].members);
+        delete db.calendars[calId].members[uid];
+        writeDb(db);
+        notifyCalendars();
+      },
       async setGroundRules(calId, patch) {
         const db = readDb();
         if (!db.calendars[calId]) throw new Error('달력을 찾을 수 없습니다.');
@@ -3109,6 +3167,22 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         db.profiles[calId][uid] = profile;
         writeDb(db);
         notifyProfiles();
+      },
+      async deleteProfile(calId, uid) {
+        const db = readDb();
+        if (db.profiles && db.profiles[calId]) {
+          delete db.profiles[calId][uid];
+          writeDb(db);
+          notifyProfiles();
+        }
+      },
+      async deleteInbox(calId, userId) {
+        const db = readDb();
+        if (db.inbox && db.inbox[calId]) {
+          delete db.inbox[calId][userId];
+          writeDb(db);
+          notifyInbox();
+        }
       },
       subscribeProfiles(calId, cb) {
         const listener = { calId: calId, cb: cb };
@@ -3354,11 +3428,23 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         patch['members.' + uid] = nickname;
         await updateDoc(doc(db, 'calendars', calId), patch);
       },
+      // 아이디에는 점이 없으므로(ID_RE) 문자열 경로로 맵의 칸 하나만 지운다
+      async removeMember(calId, uid) {
+        const patch = {};
+        patch['members.' + uid] = deleteField();
+        await updateDoc(doc(db, 'calendars', calId), patch);
+      },
       async setGroundRules(calId, patch) {
         await updateDoc(doc(db, 'calendars', calId), patch);
       },
       async setProfile(calId, uid, profile) {
         await setDoc(doc(db, 'calendars', calId, 'profiles', uid), profile);
+      },
+      async deleteProfile(calId, uid) {
+        await fsMod.deleteDoc(doc(db, 'calendars', calId, 'profiles', uid));
+      },
+      async deleteInbox(calId, userId) {
+        await fsMod.deleteDoc(doc(db, 'calendars', calId, 'inbox', userId));
       },
       // 날짜 색은 달력 문서의 맵에 한 칸씩 고쳐 넣는다(동시에 칠해도 서로 지워지지 않게).
       // 날짜 키에 '-' 가 들어가므로 문자열 경로 대신 FieldPath 를 쓴다.
@@ -3556,6 +3642,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       subscribeInbox: store.subscribeInbox.bind(store)
     };
     ['getUser', 'createUser', 'updateUser', 'getCalendar', 'createCalendar', 'addMember',
+     'removeMember', 'deleteProfile', 'deleteInbox',
      'setGroundRules', 'setProfile', 'setDayColor', 'setSchedule', 'deleteSchedule',
      'setPayment', 'deletePayment', 'pushInbox', 'setInboxRead', 'trimInbox',
      'setMemo', 'deleteMemo', 'patchMemo', 'addComment', 'removeComment',
@@ -4198,6 +4285,92 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       }
     } finally {
       state.switching = false;
+      setBusy(false);
+    }
+  }
+
+  /* ---------- 달력에서 나가기 ---------- */
+  // 마지막 하나 남은 달력은 나갈 수 없다. 나가면 들어갈 곳이 없어 빈 화면이 된다.
+  const canLeaveCalendar = () => state.calendarIds.length > 1;
+
+  function renderLeaveButton() {
+    const name = (state.calendar && state.calendar.name) || '팀 달력';
+    el.btnLeaveCal.textContent = "'" + name + "' 달력에서 나가기";   // 어느 달력인지 분명히
+    el.btnLeaveCal.disabled = !canLeaveCalendar();
+    el.leaveHint.textContent = canLeaveCalendar()
+      ? '나가면 이 달력이 목록에서 사라집니다. 다시 들어오려면 초대 링크가 필요합니다.'
+      : '마지막 달력은 나갈 수 없습니다. 먼저 다른 달력을 만들거나 초대를 받아 주세요.';
+  }
+
+  function openLeaveConfirm() {
+    if (!state.calendar || !canLeaveCalendar()) return;
+
+    const name = state.calendar.name || '팀 달력';
+    const members = state.calendar.members || {};
+    const alone = Object.keys(members).length <= 1;   // 나 혼자면 아무도 다시 못 들어온다
+
+    el.leaveMeta.textContent = "'" + name + "' 에서 나갑니다.";
+    el.leavePoints.replaceChildren();
+    [
+      '내가 쓴 메모는 달력에 그대로 남습니다.',
+      '이 달력에서의 내 프로필과 알림은 지워집니다.',
+      '다시 들어오려면 초대 링크를 새로 받아야 합니다.'
+    ].forEach((text) => {
+      const row = document.createElement('li');
+      row.textContent = text;
+      el.leavePoints.appendChild(row);
+    });
+
+    el.leaveWarn.hidden = !alone;
+    if (alone) {
+      el.leaveWarn.textContent =
+        '지금 이 달력의 참여자는 나뿐입니다. 나가면 아무도 다시 들어갈 수 없습니다.';
+    }
+
+    el.leaveBackdrop.hidden = false;
+    document.body.classList.add('is-locked');
+    el.leaveSheet.focus();
+  }
+
+  function closeLeaveConfirm(focusBack) {
+    el.leaveBackdrop.hidden = true;
+    // 뒤에 설정 모달이 그대로 떠 있으므로 body 잠금은 그대로 둔다
+    if (focusBack) el.btnLeaveCal.focus();
+  }
+
+  async function handleLeaveCalendar() {
+    if (state.busy || !state.calendar || !canLeaveCalendar()) return;
+
+    const leaving = state.calendar.id;
+    const name = state.calendar.name || '팀 달력';
+    const before = state.calendarIds.slice();          // 실패하면 되돌릴 값
+    const next = before.filter((id) => id !== leaving);
+    if (!next.length) return;
+
+    setBusy(true);
+    try {
+      await state.store.removeMember(leaving, myId());
+      await state.store.updateUser(myId(), { calendars: next });
+      state.calendarIds = next;
+      delete state.calendarCache[leaving];
+
+      // 내 것이라 남겨 둘 이유가 없는 것들. 실패해도 탈퇴 자체는 끝낸다.
+      try { await state.store.deleteProfile(leaving, myId()); }
+      catch (err) { console.warn('프로필을 지우지 못했습니다.', err); }
+      try { await state.store.deleteInbox(leaving, myId()); }
+      catch (err) { console.warn('알림함을 지우지 못했습니다.', err); }
+
+      closeLeaveConfirm(false);
+      closeSettings();
+      setBusy(false);                                  // 전환이 다시 busy 를 잡는다
+      await switchCalendar(next[0]);
+      showToast("'" + name + "' 달력에서 나왔습니다.");
+      return;
+    } catch (err) {
+      console.warn('달력 나가기 실패', err);
+      state.calendarIds = before;                      // 어중간한 상태로 두지 않는다
+      showToast(friendlyError(err), 'error');
+    } finally {
       setBusy(false);
     }
   }
@@ -5393,6 +5566,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       el.settingsTitle.textContent = '설정';
       el.settingsMeta.textContent = '';
       renderSetMenu();
+      renderLeaveButton();
     } else if (isList) {
       el.settingsTitle.textContent = '월정액';
       el.settingsMeta.textContent = '매달 나가는 요금과 들어오는 수입';
@@ -8657,6 +8831,14 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       closeCalPop(false);
     });
 
+    el.btnLeaveCal.addEventListener('click', openLeaveConfirm);
+    el.btnLeaveCancel.addEventListener('click', () => closeLeaveConfirm(true));
+    el.btnLeaveOk.addEventListener('click', handleLeaveCalendar);
+    el.leaveBackdrop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeLeaveConfirm(true); }
+      else if (event.key === 'Tab') trapTab(el.leaveSheet, event);
+    });
+
     el.btnNewCalOk.addEventListener('click', handleCreateCalendar);
     el.btnNewCalCancel.addEventListener('click', closeNewCalendar);
     el.newCalBackdrop.addEventListener('keydown', (event) => {
@@ -9040,6 +9222,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       'signupForm', 'signupId', 'signupPw', 'signupNick', 'btnSignup', 'btnGoLogin',
       'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'btnSettings', 'whoName', 'btnLogout',
       'btnCalPick', 'btnCalNew', 'calPop', 'calList',
+      'btnLeaveCal', 'leaveHint', 'leaveBackdrop', 'leaveSheet', 'leaveTitle', 'leaveMeta',
+      'leavePoints', 'leaveWarn', 'btnLeaveCancel', 'btnLeaveOk',
       'newCalBackdrop', 'newCalSheet', 'newCalTitle', 'newCalName', 'newCalNick', 'newCalError',
       'btnNewCalCancel', 'btnNewCalOk',
       'btnAlarm', 'alarmDot', 'alarmBackdrop', 'alarmSheet', 'alarmTitle', 'alarmMeta',
