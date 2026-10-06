@@ -270,7 +270,82 @@ input[type="password"]:focus {
 }
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .brand h1 { margin: 0; font-size: 20px; letter-spacing: -0.2px; }
-.brand-sub { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.brand-sub { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* 달력 바꾸기 / 새로 만들기 */
+.brand-text { min-width: 0; }
+.cal-switch { position: relative; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.cal-pick {
+  appearance: none; font: inherit;
+  display: inline-flex; align-items: center; gap: 4px;
+  min-width: 0;
+  padding: 2px 6px;
+  margin-left: -6px;            /* 글자 시작점을 제목과 맞춘다 */
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cal-pick:hover { background: var(--surface); border-color: var(--line); }
+.cal-pick .brand-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-caret { flex: none; font-size: 10px; color: var(--muted); }
+.cal-new {
+  appearance: none; font: inherit;
+  flex: none;
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text-2);
+  font-size: 14px; line-height: 1;
+  cursor: pointer;
+}
+.cal-new:hover { background: var(--surface-2); }
+
+/* 버튼 아래에 붙어 열린다(위쪽에는 자리가 없다) */
+.cal-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  width: 260px;
+  max-width: calc(100vw - 24px);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(17, 24, 39, 0.16);
+  padding: 8px;
+}
+.cal-pop-title { margin: 2px 6px 6px; font-size: 11px; font-weight: 800; color: var(--muted); }
+.cal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.cal-item {
+  appearance: none; font: inherit;
+  width: 100%;
+  display: flex; align-items: center; gap: 8px;
+  text-align: left;
+  background: transparent;
+  border: 0; border-radius: 9px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.cal-item:hover { background: var(--surface-2); }
+.cal-item-main { flex: 1 1 auto; min-width: 0; }
+.cal-item-name { display: block; font-size: 13.5px; font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-item-sub { display: block; margin-top: 1px; font-size: 11.5px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 지금 보는 달력은 색만이 아니라 표식과 글자로도 구분한다 */
+.cal-item.is-current { background: var(--blue-soft); }
+.cal-now {
+  flex: none;
+  font-size: 10px; font-weight: 800;
+  color: var(--blue-deep);
+  background: #dbeafe;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+.cal-empty { margin: 0; padding: 8px 10px; font-size: 12.5px; color: var(--muted); }
 
 .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .who {
@@ -1789,9 +1864,22 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">S</span>
-      <div>
+      <div class="brand-text">
         <h1>스크럼 캘린더</h1>
-        <p class="brand-sub" id="calendarName">달력</p>
+        <div class="cal-switch">
+          <button type="button" class="cal-pick" id="btnCalPick"
+                  aria-haspopup="true" aria-expanded="false">
+            <span class="brand-sub" id="calendarName">달력</span>
+            <span class="cal-caret" aria-hidden="true">▾</span>
+          </button>
+          <button type="button" class="cal-new" id="btnCalNew" aria-label="새 달력 만들기"
+                  title="새 달력 만들기">＋</button>
+
+          <div class="cal-pop" id="calPop" role="menu" aria-label="내 달력" hidden>
+            <p class="cal-pop-title">내 달력</p>
+            <ul class="cal-list" id="calList"></ul>
+          </div>
+        </div>
       </div>
     </div>
     <div class="topbar-actions">
@@ -2221,6 +2309,40 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
 </div>
 
 <!-- =========================================================
+     새 달력 만들기
+     ========================================================= -->
+<div class="backdrop" id="newCalBackdrop" hidden>
+  <div class="sheet sheet-sm" id="newCalSheet" role="dialog" aria-modal="true"
+       aria-labelledby="newCalTitle" tabindex="-1">
+    <header class="sheet-head">
+      <div>
+        <h2 class="sheet-title" id="newCalTitle">새 달력 만들기</h2>
+        <p class="sheet-meta">만들면 바로 그 달력으로 들어갑니다.</p>
+      </div>
+    </header>
+
+    <div class="sheet-body">
+      <div class="field">
+        <label for="newCalName">달력 이름</label>
+        <input type="text" id="newCalName" maxlength="40" autocomplete="off" placeholder="예) A팀 스크럼" />
+        <p class="hint">비워 두면 내 닉네임을 따 이름을 지어 줍니다.</p>
+      </div>
+      <div class="field">
+        <label for="newCalNick">이 달력에서 쓸 닉네임</label>
+        <input type="text" id="newCalNick" maxlength="20" autocomplete="off" placeholder="예) 김싸피" />
+      </div>
+      <p class="error-text" id="newCalError" hidden></p>
+    </div>
+
+    <footer class="sheet-foot">
+      <span class="foot-spacer"></span>
+      <button type="button" class="btn" id="btnNewCalCancel">취소</button>
+      <button type="button" class="btn primary" id="btnNewCalOk">만들기</button>
+    </footer>
+  </div>
+</div>
+
+<!-- =========================================================
      초대받은 달력에서 쓸 닉네임 묻기
      달력마다 닉네임을 따로 둘 수 있으므로 합류할 때 한 번 물어본다.
      ========================================================= -->
@@ -2523,6 +2645,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     store: null,
     mode: 'local',          // 'firestore' | 'local'
     session: null,          // { userId, nickname, calendarId }
+    calendarIds: [],        // 내가 속한 달력 ID 목록
+    calendarCache: {},      // { 달력ID: 달력 문서 } 드롭다운을 그릴 때 쓴다
+    calPopOpen: false,
+    switching: false,       // 달력을 바꾸는 중
     calendar: null,         // { id, name, ownerId, members }
     days: {},               // 구독 중인 달의 데이터 { 'YYYY-MM-DD': { memos: {...} } }
     unsubscribe: null,
@@ -3541,10 +3667,13 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       }
 
       let calendarId = user.calendarId;
+      const joined = userCalendarIds(user);
       if (state.pendingInvite && state.pendingInvite !== calendarId) {
         calendarId = await joinInvitedCalendar(user);
         if (!calendarId) return;
       }
+      if (joined.indexOf(calendarId) === -1) joined.push(calendarId);   // 합류했으면 목록에 더한다
+      await rememberCalendars(user, joined);
 
       // 닉네임은 달력마다 다를 수 있다. 실제 값은 enterCalendar() 에서 그 달력 기준으로 맞춘다.
       saveSession({ userId: user.id, nickname: cleanName(user.nickname), calendarId: calendarId });
@@ -3614,8 +3743,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         salt: salt,
         passwordHash: passwordHash,
         calendarId: calendarId,
+        calendars: [calendarId],
         createdAt: new Date().toISOString()
       });
+      state.calendarIds = [calendarId];
 
       if (state.pendingInvite) await state.store.addMember(calendarId, id, nickname);
 
@@ -3633,6 +3764,27 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
   function nicknameTaken(calendar, nickname, myId) {
     const members = calendar.members || {};
     return Object.keys(members).some((uid) => uid !== myId && members[uid] === nickname);
+  }
+
+  // 예전 사용자 문서에는 calendars 목록이 없고 calendarId 하나만 있다.
+  // 읽을 때 목록으로 바꿔 주고, 저장할 기회가 생기면 그때 채운다(별도 이관 작업 없음).
+  function userCalendarIds(user) {
+    const raw = Array.isArray(user && user.calendars) ? user.calendars : [];
+    const list = raw.filter((id) => typeof id === 'string' && id);
+    if (user && user.calendarId && list.indexOf(user.calendarId) === -1) list.push(user.calendarId);
+    return list;
+  }
+
+  // 목록을 state 에 담고, 저장된 값과 다르면 사용자 문서에도 적어 둔다
+  async function rememberCalendars(user, ids) {
+    state.calendarIds = ids.slice();
+    const saved = Array.isArray(user && user.calendars) ? user.calendars : null;
+    if (saved && saved.length === ids.length && saved.every((id, i) => id === ids[i])) return;
+    try {
+      await state.store.updateUser(user.id, { calendars: ids });
+    } catch (err) {
+      console.warn('달력 목록을 저장하지 못했습니다.', err);   // 화면은 그대로 쓸 수 있다
+    }
   }
 
   // 그 달력에서 쓰는 닉네임. 없으면 사용자 기본 닉네임으로 떨어진다.
@@ -3709,8 +3861,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       return '';
     }
     const ok = window.confirm(
-      "'" + (calendar.name || '초대받은 달력') + "' 달력으로 이동할까요?\n\n" +
-      '지금 쓰던 달력 기록은 그대로 남아 있고, 초대 링크로 다시 돌아올 수 있습니다.'
+      "'" + (calendar.name || '초대받은 달력') + "' 달력에 참여할까요?\n\n" +
+      '지금 쓰던 달력은 그대로 남습니다. 왼쪽 위 달력 이름을 눌러 언제든 오갈 수 있습니다.'
     );
     if (!ok) { state.pendingInvite = ''; return user.calendarId; }
 
@@ -3729,8 +3881,10 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     return calendar.id;
   }
 
-  function handleLogout() {
-    if (!window.confirm('로그아웃할까요?')) return;
+  // 달력 하나에 걸린 구독과 상태를 모두 걷어낸다.
+  // 로그아웃과 달력 전환이 같은 정리를 해야 해서 한 군데로 모았다.
+  // 하나라도 빠뜨리면 이전 달력의 내용이 다음 화면에 섞여 보인다.
+  function teardownCalendar() {
     if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
     if (state.unsubscribeCalendar) { state.unsubscribeCalendar(); state.unsubscribeCalendar = null; }
     if (state.unsubscribeProfiles) { state.unsubscribeProfiles(); state.unsubscribeProfiles = null; }
@@ -3743,6 +3897,15 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     state.profiles = {};
     state.schedules = {};
     state.payments = {};
+    state.days = {};
+    state.calendar = null;
+  }
+
+  function handleLogout() {
+    if (!window.confirm('로그아웃할까요?')) return;
+    teardownCalendar();
+    state.calendarIds = [];
+    state.calendarCache = {};
     clearSession();
     state.calendar = null;
     state.days = {};
@@ -3875,6 +4038,229 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
     } catch (err) {
       console.warn('구독 실패', err);
       showToast(friendlyError(err), 'error');
+    }
+  }
+
+  /* =======================================================
+     달력 바꾸기 / 새 달력 만들기
+     ======================================================= */
+  // 드롭다운에 쓸 달력 문서를 모아 둔다. 열 때마다 네트워크를 타지 않도록 한 번만 읽는다.
+  async function loadCalendarCache() {
+    const ids = state.calendarIds.slice();
+    for (const id of ids) {
+      if (state.calendarCache[id]) continue;
+      try {
+        const cal = await state.store.getCalendar(id);
+        // 없어진 달력이면 담지 않는다. 목록 전체가 막히면 안 되므로 넘어간다.
+        if (cal) state.calendarCache[id] = cal;
+      } catch (err) {
+        console.warn('달력 정보를 읽지 못했습니다.', id, err);
+      }
+    }
+    if (state.calendar) state.calendarCache[state.calendar.id] = state.calendar;
+  }
+
+  function renderCalList() {
+    el.calList.replaceChildren();
+    const here = state.calendar ? state.calendar.id : '';
+    const rows = state.calendarIds
+      .map((id) => state.calendarCache[id])
+      .filter(Boolean);                       // 없어진 달력은 건너뛴다
+
+    if (!rows.length) {
+      const empty = document.createElement('p');
+      empty.className = 'cal-empty';
+      empty.textContent = '참여 중인 달력이 없습니다.';
+      el.calList.appendChild(empty);
+      return;
+    }
+
+    rows.forEach((cal) => {
+      const row = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'cal-item' + (cal.id === here ? ' is-current' : '');
+      button.dataset.calId = cal.id;
+      button.setAttribute('role', 'menuitem');
+
+      const main = document.createElement('span');
+      main.className = 'cal-item-main';
+
+      const name = document.createElement('span');
+      name.className = 'cal-item-name';
+      name.textContent = cal.name || '팀 달력';      // XSS 방지
+
+      const members = cal.members || {};
+      const mine = cleanName(members[myId()]);
+      const sub = document.createElement('span');
+      sub.className = 'cal-item-sub';
+      sub.textContent = (mine ? mine + ' · ' : '') + Object.keys(members).length + '명';
+
+      main.appendChild(name);
+      main.appendChild(sub);
+      button.appendChild(main);
+
+      if (cal.id === here) {                         // 색만이 아니라 글자로도 구분한다
+        const now = document.createElement('span');
+        now.className = 'cal-now';
+        now.textContent = '현재';
+        button.appendChild(now);
+      }
+      row.appendChild(button);
+      el.calList.appendChild(row);
+    });
+  }
+
+  // 좁은 화면에서 목록이 화면 밖으로 나가지 않게 옆으로 밀어 준다
+  function positionCalPop() {
+    el.calPop.style.transform = '';
+    const rect = el.calPop.getBoundingClientRect();
+    const margin = 8;
+    let shift = 0;
+    if (rect.right > window.innerWidth - margin) shift = window.innerWidth - margin - rect.right;
+    else if (rect.left < margin) shift = margin - rect.left;
+    if (shift) el.calPop.style.transform = 'translateX(' + Math.round(shift) + 'px)';
+  }
+
+  async function openCalPop() {
+    renderCalList();                      // 캐시에 있는 것부터 바로 보여 준다
+    el.calPop.hidden = false;
+    state.calPopOpen = true;
+    el.btnCalPick.setAttribute('aria-expanded', 'true');
+    positionCalPop();
+
+    await loadCalendarCache();            // 모자란 정보는 받아서 다시 그린다
+    if (!state.calPopOpen) return;
+    renderCalList();
+    positionCalPop();
+
+    const first = el.calList.querySelector('.cal-item');
+    if (first) first.focus();
+  }
+
+  function closeCalPop(focusBack) {
+    el.calPop.hidden = true;
+    state.calPopOpen = false;
+    el.btnCalPick.setAttribute('aria-expanded', 'false');
+    if (focusBack) el.btnCalPick.focus();
+  }
+
+  // 열려 있는 화면을 모두 닫는다. 달력이 바뀌는데 남아 있으면 엉뚱한 내용이 보인다.
+  function closeAllScreens() {
+    closeCalPop(false);
+    if (state.paintOpen) closePaintPop(false);
+    disarmPaint();
+    if (!el.backdrop.hidden) closeModal(true);
+    if (!el.settingsBackdrop.hidden) closeSettings();
+    if (!el.alarmBackdrop.hidden) closeAlarm();
+    if (!el.scheduleBackdrop.hidden) closeScheduleEditor();
+    if (!el.profileBackdrop.hidden) closeProfileModal();
+    if (!el.searchScreen.hidden) closeSearch();
+    if (state.boardKey) {                 // 타공판은 애니메이션 없이 곧장 닫는다
+      state.boardKey = null;
+      el.board.hidden = true;
+      el.app.classList.remove('is-zoomed');
+      el.app.removeAttribute('aria-hidden');
+      document.body.classList.remove('is-locked');
+    }
+  }
+
+  async function switchCalendar(calendarId) {
+    if (!calendarId || state.switching) return;
+    if (state.calendar && state.calendar.id === calendarId) { closeCalPop(true); return; }
+
+    const previous = state.session ? state.session.calendarId : '';
+    state.switching = true;
+    setBusy(true);
+    closeAllScreens();
+
+    try {
+      teardownCalendar();
+      saveSession(Object.assign({}, state.session, { calendarId: calendarId }));
+      await enterCalendar();              // 닉네임은 여기서 그 달력 기준으로 맞춰진다
+      if (!state.calendar) throw new Error('달력을 열지 못했습니다.');
+
+      state.calendarCache[calendarId] = state.calendar;
+      try {
+        await state.store.updateUser(myId(), { calendarId: calendarId });   // 마지막 달력 기억
+      } catch (err) {
+        console.warn('마지막 달력을 기록하지 못했습니다.', err);            // 화면은 이미 바뀌었다
+      }
+      showToast("'" + (state.calendar.name || '팀 달력') + "' 달력으로 옮겼습니다.");
+    } catch (err) {
+      console.warn('달력 전환 실패', err);
+      showToast(friendlyError(err), 'error');
+      // 어중간한 빈 화면에 남지 않도록 원래 달력으로 되돌린다
+      if (previous && previous !== calendarId) {
+        teardownCalendar();
+        saveSession(Object.assign({}, state.session, { calendarId: previous }));
+        await enterCalendar();
+      }
+    } finally {
+      state.switching = false;
+      setBusy(false);
+    }
+  }
+
+  /* ---------- 새 달력 만들기 ---------- */
+  function openNewCalendar() {
+    closeCalPop(false);
+    el.newCalName.value = '';
+    el.newCalNick.value = cleanName(state.session ? state.session.nickname : '');
+    el.newCalError.hidden = true;
+    el.newCalBackdrop.hidden = false;
+    document.body.classList.add('is-locked');
+    el.app.setAttribute('aria-hidden', 'true');
+    el.newCalName.focus();
+  }
+
+  function closeNewCalendar() {
+    el.newCalBackdrop.hidden = true;
+    el.newCalError.hidden = true;
+    if (!state.boardKey) document.body.classList.remove('is-locked');
+    el.app.removeAttribute('aria-hidden');
+    el.btnCalNew.focus();
+  }
+
+  async function handleCreateCalendar() {
+    if (state.busy) return;
+    const nickname = cleanName(el.newCalNick.value);
+    if (!nickname) {
+      el.newCalError.hidden = false;
+      el.newCalError.textContent = '이 달력에서 쓸 닉네임을 입력해 주세요.';
+      el.newCalNick.focus();
+      return;
+    }
+    // 비워 두면 가입할 때와 같은 방식으로 이름을 지어 준다
+    const name = el.newCalName.value.trim().slice(0, 40) || (nickname + '님의 달력');
+
+    setBusy(true);
+    try {
+      const calendarId = 'cal_' + randomHex(8);
+      const members = {};
+      members[myId()] = nickname;
+      await state.store.createCalendar({
+        id: calendarId,
+        name: name,
+        ownerId: myId(),
+        members: members,
+        createdAt: new Date().toISOString()
+      });
+
+      const ids = state.calendarIds.slice();
+      if (ids.indexOf(calendarId) === -1) ids.push(calendarId);
+      await rememberCalendars({ id: myId(), calendars: state.calendarIds }, ids);
+
+      closeNewCalendar();
+      setBusy(false);                     // 전환이 다시 busy 를 잡는다
+      await switchCalendar(calendarId);   // 만들었으면 바로 들어간다
+      return;
+    } catch (err) {
+      console.warn('달력 만들기 실패', err);
+      el.newCalError.hidden = false;
+      el.newCalError.textContent = friendlyError(err);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -8244,6 +8630,41 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       else if (event.key === 'Tab') trapTab(el.scheduleSheet, event);
     });
 
+    // 달력 바꾸기 / 새로 만들기
+    el.btnCalPick.addEventListener('click', () => {
+      if (state.calPopOpen) closeCalPop(true); else openCalPop();
+    });
+    el.btnCalNew.addEventListener('click', openNewCalendar);
+    el.calList.addEventListener('click', (event) => {
+      const item = event.target.closest('.cal-item');
+      if (item) switchCalendar(item.dataset.calId);
+    });
+    el.calList.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      const items = Array.prototype.slice.call(el.calList.querySelectorAll('.cal-item'));
+      const at = items.indexOf(document.activeElement);
+      const next = items[(at + (event.key === 'ArrowDown' ? 1 : items.length - 1) + items.length) % items.length];
+      if (next) next.focus();
+    });
+    el.calPop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeCalPop(true); }
+    });
+    // 바깥을 누르면 닫는다
+    document.addEventListener('pointerdown', (event) => {
+      if (!state.calPopOpen) return;
+      if (el.calPop.contains(event.target) || el.btnCalPick.contains(event.target)) return;
+      closeCalPop(false);
+    });
+
+    el.btnNewCalOk.addEventListener('click', handleCreateCalendar);
+    el.btnNewCalCancel.addEventListener('click', closeNewCalendar);
+    el.newCalBackdrop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeNewCalendar(); }
+      else if (event.key === 'Enter') { event.preventDefault(); handleCreateCalendar(); }
+      else if (event.key === 'Tab') trapTab(el.newCalSheet, event);
+    });
+
     // 알림
     el.btnAlarm.addEventListener('click', openAlarm);
     el.btnAlarmClose.addEventListener('click', closeAlarm);
@@ -8618,6 +9039,9 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
       'loginForm', 'loginId', 'loginPw', 'btnLogin', 'btnGoSignup',
       'signupForm', 'signupId', 'signupPw', 'signupNick', 'btnSignup', 'btnGoLogin',
       'app', 'calendarName', 'modeTag', 'btnSearch', 'btnInvite', 'btnSettings', 'whoName', 'btnLogout',
+      'btnCalPick', 'btnCalNew', 'calPop', 'calList',
+      'newCalBackdrop', 'newCalSheet', 'newCalTitle', 'newCalName', 'newCalNick', 'newCalError',
+      'btnNewCalCancel', 'btnNewCalOk',
       'btnAlarm', 'alarmDot', 'alarmBackdrop', 'alarmSheet', 'alarmTitle', 'alarmMeta',
       'btnAlarmClose', 'alarmList', 'alarmEmpty',
       'nickBackdrop', 'nickSheet', 'nickTitle', 'nickMeta', 'nickInput', 'nickError',
@@ -8717,6 +9141,7 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
         const user = await state.store.getUser(session.userId);
         if (user) {
           let calendarId = user.calendarId;
+          const joined = userCalendarIds(user);
           if (state.pendingInvite && state.pendingInvite !== calendarId) {
             // 합류할지, 어떤 닉네임을 쓸지 물어보기 전에 로딩 화면을 먼저 걷는다.
             // 로딩 화면을 띄운 채로 물으면 대답할 창이 그 뒤에 가려 아무것도 누를 수 없다.
@@ -8725,6 +9150,8 @@ img.is-loading { background: repeating-linear-gradient(45deg, #eef0f3 0 8px, #e6
             switchAuthMode('login');
             calendarId = await joinInvitedCalendar(user) || user.calendarId;
           }
+          if (joined.indexOf(calendarId) === -1) joined.push(calendarId);
+          await rememberCalendars(user, joined);
           saveSession({ userId: user.id, nickname: cleanName(user.nickname), calendarId: calendarId });
           el.splash.hidden = true;
           await enterCalendar();             // 성공하면 여기서 로그인 화면을 감춘다
